@@ -3,6 +3,8 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 
+from sensor_msgs.msg import PointCloud
+
 class FuturNode(Node):
 
     def __init__(self, name):
@@ -20,15 +22,38 @@ class MoveNode(FuturNode):
         super().__init__('move')
         self.velocity_publisher = self.create_publisher(Twist, '/mobile_base/commands/velocity', 10)
 
+
+        self.create_subscription(PointCloud, '/laser/pointcloud', self.scan_callback, 10)
+
         self.iterations = 0
         self.timer = self.create_timer(0.1, self.activate) # 0.1 seconds to target a frequency of 10 hertz
+        self.blocked = False
 
     def isFinish(self):
-        return self.iterations > 20
+        return self.iterations > 20000 or self.blocked == True
+
+    def scan_callback(self, pc):
+
+        # pc.points
+        print("cloud : ")
+
+        for point in pc.points:
+            if abs(point.y) < 0.1 and point.x > 0.1 and point.x < 0.3:
+                self.blocked = True
+                print("blocked")
+                break
+
+
+
+
+
 
     def activate(self):
+        
+        
+        
         velo = Twist()
-        velo.linear.x = 0.5 # target a 0.2 meter per second velocity
+        velo.linear.x = 0.2 # target a 0.2 meter per second velocity
 
         self.iterations = self.iterations + 1
         
@@ -51,6 +76,8 @@ class MoveNode(FuturNode):
 def main(args=None):
     rclpy.init(args=args)
     move = MoveNode()
+
+
 
     # Start the ros infinit loop with the move node.
     rclpy.spin_until_future_complete(move, future=move.future)

@@ -27,7 +27,7 @@ def generate_launch_description():
             launch_arguments={'world': 'challenge-1'}.items(),
             ),
 
-        Node(package='rviz2',namespace='', executable='rviz2', arguments=['-d /home/bot/ros2_ws/larm_thibault_lemoigne/tuto_sim/launch/launch_config.rviz']),
+        Node(package='rviz2',namespace='', executable='rviz2', arguments=['-d', os.path.join('/home/bot/ros2_ws/larm_thibault_lemoigne/tuto_sim/launch/launch_config.rviz')]),
         
         Node(package='teleop_twist_keyboard', executable='teleop_twist_keyboard', prefix='gnome-terminal -x')
     
