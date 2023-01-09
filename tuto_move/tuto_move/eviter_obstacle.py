@@ -5,6 +5,8 @@ from geometry_msgs.msg import Twist
 
 from sensor_msgs.msg import PointCloud
 
+import time
+
 class FuturNode(Node):
 
     def __init__(self, name):
@@ -30,12 +32,16 @@ class MoveNode(FuturNode):
         self.leftBlocked = False
         self.rightBlocked = False
         
+        self.alternateDir = False
+
         #self.turning = False
         self.xSpeed = 0.0
 
         self.turnoverTime = 0
 
         self.blockTime = 0
+
+        self.lastAlternateDirChange = 0
 
     def isFinish(self):
         return self.iterations > 20000
@@ -53,12 +59,12 @@ class MoveNode(FuturNode):
         longRangeObs = False
 
         for point in pc.points:
-            if point.y >= -0.15 and point.y <= 0.0 and point.x > 0.1 and point.x < 0.25:
+            if point.y >= -0.15 and point.y <= 0.0 and point.x > 0.05 and point.x < 0.25:
                 tempLeftBlocked = True
                 print("left blocked")
             
 
-            if point.y >= 0.0 and point.y <= 0.15 and point.x > 0.1 and point.x < 0.25:
+            if point.y >= 0.0 and point.y <= 0.15 and point.x > 0.05 and point.x < 0.25:
                 tempRightBlocked = True
                 print("right blocked")
 
@@ -66,24 +72,6 @@ class MoveNode(FuturNode):
             if abs(point.y) < 0.20 and point.x >= 0.25 and point.x < 0.5:
                 longRangeObs = True
 
-
-    
-                #print("long range")
-
-
-            #if abs(point.y) <= -0.7 and point.x < 0.3 and self.blockTime > 15:
-            #    self.historyMode = 1
-            # angle hor plus large quand déjà bloqué
-            #if self.blocked == True and abs(point.y) < 0.25 and point.x > 0.1 and point.x < 0.3:
-            #    tempb = True
-
-    
-            #    print("blocked")
-            #    break
-
-        
-        #if tempLeftBlocked == True and tempRightBlocked == True and (tempLeftBlocked != self.leftBlocked or tempRightBlocked != self.rightBlocked):
-        #    self.rotateCount = 1
 
         self.leftBlocked = tempLeftBlocked
         self.rightBlocked = tempRightBlocked
@@ -94,42 +82,13 @@ class MoveNode(FuturNode):
         else:
             self.blockTime += 1
 
-            #if self.blockTime >= 20 and self.turnoverTime == 0:
-                #elf.turnoverTime = 20
-
             print(f"Block time : {self.blockTime}")
-
-          
-
-        
-
-        
-
-        
-
-
-
-
-
 
     def activate(self):
         
         
         
         velo = Twist()
-        
-        
-        #if self.turnoverTime > 0:
-        #    velo.angular.z = 0.9
-        #    print("TUrn over rot")
-
-        #    self.turnoverTime -= 1
-        #    self.velocity_publisher.publish(velo)
-
-        #    if self.rightBlocked == False:
-        #        self.turnoverTime = 0
-
-        #    return;
 
 
         if self.leftBlocked == False and self.rightBlocked == False:
@@ -183,12 +142,27 @@ class MoveNode(FuturNode):
 
           
             if self.rightBlocked == True and self.leftBlocked == True:
-                velo.linear.x = -0.01
+                velo.linear.x = 0.01
                 velo.linear.y = 0.0
                 velo.linear.z = 0.0
-                velo.angular.x = -0.5
+                velo.angular.x = 0.0
                 velo.angular.y = 0.0
-                velo.angular.z = 0.5
+
+                if time.time() - self.lastAlternateDirChange > 6:
+                    self.lastAlternateDirChange = time.time()
+                
+                    if self.alternateDir:
+                        self.alternateDir = False
+                    else:
+                        self.alternateDir = True
+
+
+                if self.alternateDir == True:
+                    velo.angular.z = 0.9
+                else:
+                    velo.angular.z = -0.9
+                    
+                    
                 print("[MOuvement] Rotation face")
                 
 
@@ -200,7 +174,6 @@ class MoveNode(FuturNode):
             velo.linear.x = 0.0
             velo.angular.x = 0.0
             self.velocity_publisher.publish(velo)
-            # rclpy.shutdown()
 
             self.finish()
             

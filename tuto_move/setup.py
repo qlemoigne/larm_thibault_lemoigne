@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'move_1m = tuto_move.move_1m:main',
+            'eviter_obstacle = tuto_move.eviter_obstacle:main',
             'turn_left_45 = tuto_move.turn_left_45:main',
             'turn_right_45 = tuto_move.turn_right_45:main',
             'rear_0.5m = tuto_move.read_0.5m:main',
