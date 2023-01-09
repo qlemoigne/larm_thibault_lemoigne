@@ -27,21 +27,85 @@ class MoveNode(FuturNode):
 
         self.iterations = 0
         self.timer = self.create_timer(0.1, self.activate) # 0.1 seconds to target a frequency of 10 hertz
-        self.blocked = False
+        self.leftBlocked = False
+        self.rightBlocked = False
+        
+        #self.turning = False
+        self.xSpeed = 0.0
+
+        self.turnoverTime = 0
+
+        self.blockTime = 0
 
     def isFinish(self):
-        return self.iterations > 20000 or self.blocked == True
+        return self.iterations > 20000
 
     def scan_callback(self, pc):
 
         # pc.points
-        print("cloud : ")
+    
+        # chercher objet à tracker
+
+
+        tempLeftBlocked = False
+        tempRightBlocked = False
+
+        longRangeObs = False
 
         for point in pc.points:
-            if abs(point.y) < 0.1 and point.x > 0.1 and point.x < 0.3:
-                self.blocked = True
-                print("blocked")
-                break
+            if point.y >= -0.15 and point.y <= 0.0 and point.x > 0.1 and point.x < 0.25:
+                tempLeftBlocked = True
+                print("left blocked")
+            
+
+            if point.y >= 0.0 and point.y <= 0.15 and point.x > 0.1 and point.x < 0.25:
+                tempRightBlocked = True
+                print("right blocked")
+
+
+            if abs(point.y) < 0.20 and point.x >= 0.25 and point.x < 0.5:
+                longRangeObs = True
+
+
+    
+                #print("long range")
+
+
+            #if abs(point.y) <= -0.7 and point.x < 0.3 and self.blockTime > 15:
+            #    self.historyMode = 1
+            # angle hor plus large quand déjà bloqué
+            #if self.blocked == True and abs(point.y) < 0.25 and point.x > 0.1 and point.x < 0.3:
+            #    tempb = True
+
+    
+            #    print("blocked")
+            #    break
+
+        
+        #if tempLeftBlocked == True and tempRightBlocked == True and (tempLeftBlocked != self.leftBlocked or tempRightBlocked != self.rightBlocked):
+        #    self.rotateCount = 1
+
+        self.leftBlocked = tempLeftBlocked
+        self.rightBlocked = tempRightBlocked
+        self.longRangeObs = longRangeObs
+
+        if self.leftBlocked == False and self.rightBlocked == False:
+            self.blockTime = 0
+        else:
+            self.blockTime += 1
+
+            #if self.blockTime >= 20 and self.turnoverTime == 0:
+                #elf.turnoverTime = 20
+
+            print(f"Block time : {self.blockTime}")
+
+          
+
+        
+
+        
+
+        
 
 
 
@@ -53,7 +117,80 @@ class MoveNode(FuturNode):
         
         
         velo = Twist()
-        velo.linear.x = 0.2 # target a 0.2 meter per second velocity
+        
+        
+        #if self.turnoverTime > 0:
+        #    velo.angular.z = 0.9
+        #    print("TUrn over rot")
+
+        #    self.turnoverTime -= 1
+        #    self.velocity_publisher.publish(velo)
+
+        #    if self.rightBlocked == False:
+        #        self.turnoverTime = 0
+
+        #    return;
+
+
+        if self.leftBlocked == False and self.rightBlocked == False:
+            
+            print("[Mouvement] Avance")
+
+            if self.xSpeed == 0:
+                self.xSpeed = 0.03
+
+            if self.longRangeObs == False:
+
+                if self.xSpeed < 0.6:
+                    self.xSpeed += 0.03
+            
+
+            else:
+                
+                if self.xSpeed > 0.3:
+                    self.xSpeed -= 0.05
+
+                else:  
+                    if self.xSpeed < 0.3:
+                        self.xSpeed += 0.05
+
+            velo.linear.x = self.xSpeed # target a 0.2 meter per second velocity
+
+
+        else:
+
+            self.xSpeed = 0
+
+
+            if self.rightBlocked == False and self.leftBlocked == True:
+                velo.linear.x = 0.01
+                velo.linear.y = 0.0
+                velo.linear.z = 0.0
+                velo.angular.x = 0.0
+                velo.angular.y = 0.0
+                velo.angular.z = 0.9
+                print("[MOuvement] Rotation GAUCHE")
+            
+            
+            if self.rightBlocked == True and self.leftBlocked == False:
+                velo.linear.x = 0.01
+                velo.linear.y = 0.0
+                velo.linear.z = 0.0
+                velo.angular.x = 0.0
+                velo.angular.y = 0.0
+                velo.angular.z = -0.9
+                print("[MOuvement] Rotation Droite")
+
+          
+            if self.rightBlocked == True and self.leftBlocked == True:
+                velo.linear.x = -0.01
+                velo.linear.y = 0.0
+                velo.linear.z = 0.0
+                velo.angular.x = -0.5
+                velo.angular.y = 0.0
+                velo.angular.z = 0.5
+                print("[MOuvement] Rotation face")
+                
 
         self.iterations = self.iterations + 1
         
@@ -61,16 +198,20 @@ class MoveNode(FuturNode):
         if self.isFinish():
             self.timer.cancel()
             velo.linear.x = 0.0
+            velo.angular.x = 0.0
             self.velocity_publisher.publish(velo)
             # rclpy.shutdown()
 
             self.finish()
             
         else:
+           
+            
+
             self.velocity_publisher.publish(velo)
         
 
-        print("Envoi packet velo")
+        
      
 
 def main(args=None):

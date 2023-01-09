@@ -24,6 +24,9 @@ class ScanInterpret(Node):
         obstacles= []
         angle= scanMsg.angle_min
 
+        # x : Avant arrière, > 0 devant robot
+        # Y : gauche / droite
+
         for aDistance in scanMsg.ranges :
             if aDistance < 5.0 :
 
