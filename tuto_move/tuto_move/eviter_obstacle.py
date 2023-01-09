@@ -34,6 +34,8 @@ class MoveNode(FuturNode):
         
         self.alternateDir = False
 
+        self.longRangeObs = False
+
         #self.turning = False
         self.xSpeed = 0.0
 
