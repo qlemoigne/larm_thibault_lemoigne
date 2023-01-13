@@ -1,9 +1,9 @@
 # larm_thibault_lemoigne
-Repo projet LARM
+Repository projet LARM
 
 Ce projet contient les différents packages liés à l'UV LARM.
 
-**Packages contenus : **
+** Packages contenus : **
 - tuto_move : Tutoriel lié au mouvements
 - tuto_sim : Tutoriel lié à la simulation
 - tuto_visio : Tutoriel lié à la vision
