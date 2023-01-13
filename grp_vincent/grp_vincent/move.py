@@ -1,13 +1,21 @@
 from asyncio import Future
+from math import sqrt
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 
 from sensor_msgs.msg import PointCloud
 
-import time
 
-OBS_DIST = 0.25
+import sys
+sys.path.append("/install/kobuki_ros_interfaces/lib/python3.8/site-packages")
+from kobuki_ros_interfaces.msg import Sound
+from kobuki_ros_interfaces.msg import Led
+from kobuki_ros_interfaces.msg import WheelDropEvent
+
+import time
+import random
+OBS_DIST = 0.30
 
 class FuturNode(Node):
 
@@ -22,31 +30,106 @@ class FuturNode(Node):
 
 class ObstacleAreaData():
 
-    def __init__(self):
+    def __init__(self, name, minx, miny, maxx, maxy):
 
+        self.name = name
         self.count = 0
-        self.closestDistance = 0
+        self.closestDistance = 10000.0
+
+        self.countCopy = 0
+        self.closestDistanceCopy = 10000.0
+
+        self.minx = minx
+        self.miny = miny
+        self.maxx = maxx
+        self.maxy = maxy
+
+        self.projectedDist = False
+
+    def update(self):
+        self.count = self.countCopy
+        self.closestDistance = self.closestDistanceCopy
+
+        self.countCopy = 0
+        self.closestDistanceCopy = 10000.0
+
+    ''' != 0 => qch dans la zone '''
+    def blocked(self):
+        return self.closestDistance < 10000.0
+
+    '''
+    Indique si un point se trouve dans la zone
+    '''
+    def isInside(self, point):
+        return point.x >= self.minx and point.y >= self.miny and point.x <= self.maxx and point.y <= self.maxy
+
+
+    def debug(self):
+        print(f"State : " + self.name + " => C = " + str(self.count) + " CLOSEST = " + str(self.closestDistance) + ", BLOCK = " + str(self.blocked()) + "")
+
+    def computePoint(self, point):
+        if self.isInside(point):
+            
+            if self.projectedDist == False:
+                norme = point.x * point.x + point.y * point.y
+
+                distance = sqrt(norme)
+
+                # ignore pts parasite
+                if distance < 0.02:
+                    return
+            else:
+                distance = point.x
+
+            self.countCopy += 1
+
+            if distance < self.closestDistanceCopy:
+                self.closestDistanceCopy = distance
+
 
 class MoveNode(FuturNode):
 
     def __init__(self):
         super().__init__('move')
-        self.velocity_publisher = self.create_publisher(Twist, '/mobile_base/commands/velocity', 10)
+        self.velocity_publisher = self.create_publisher(Twist, '/multi/cmd_nav', 10)
+
+        self.sound_publisher = self.create_publisher(Sound, '/commands/sound', 10)
+
+        self.led1_publisher = self.create_publisher(Led, '/commands/led1', 10)
+
+        self.led2_publisher = self.create_publisher(Led, '/commands/led2', 10)
 
 
         self.create_subscription(PointCloud, '/laser/pointcloud', self.scan_callback, 10)
+        self.create_subscription(WheelDropEvent, '/events/wheel_drop', self.wheel_callback, 10)
 
         self.iterations = 0
         self.timer = self.create_timer(0.1, self.activate) # 0.1 seconds to target a frequency of 10 hertz
 
-        self.frontLeft = ObstacleAreaData()
-        self.frontRight = ObstacleAreaData()
+        self.frontLeft = ObstacleAreaData(name="Front Left", miny=0.0, maxy=0.19, minx=0.05, maxx=OBS_DIST)
+        self.frontRight = ObstacleAreaData(name="Front Right", miny=-0.19, maxy=0.0, minx=0.05, maxx=OBS_DIST)
 
-        self.front
+        self.frontExtremeLeft = ObstacleAreaData(name="Front extreme Left", miny=0.19, maxy=0.4, minx=0.05, maxx=OBS_DIST)
+        self.frontExtremeRight = ObstacleAreaData(name="Front extreme Right", miny=-0.4, maxy=-0.19, minx=0.05, maxx=OBS_DIST)
 
-        self.leftObstacleDistance = 10000
-        self.rightObstacleDistance = 10000
+       
 
+        self.frontPath = ObstacleAreaData(name="Front path", miny=-0.16, maxy=0.16 ,minx=0.1, maxx= 0.3)
+
+
+        # 0.3 m
+        self.longObstacle = ObstacleAreaData(name="Long obs", miny=-0.2, maxy=0.2,minx=OBS_DIST, maxx=OBS_DIST + 0.4)
+        
+
+        self.longFrontLeft = ObstacleAreaData(name="Long front left obs", miny=0.0, maxy=0.25,minx=OBS_DIST, maxx=OBS_DIST + 0.4)
+        self.longFrontRight = ObstacleAreaData(name="Long front right obs", miny=-0.25, maxy=0.0,minx=OBS_DIST, maxx=OBS_DIST + 0.4)
+        self.longFrontLeft.projectedDist = True
+        self.longFrontRight.projectedDist = True
+
+        #self.veryLongFrontLeft = ObstacleAreaData(name="Very Long front left obs", miny=0.2, maxy=0.4,minx=OBS_DIST, maxx=OBS_DIST + 0.4)
+        #self.veryLongFrontLeft.projectedDist = True
+        #self.veryLongFrontRight = ObstacleAreaData(name="VeryLong front right obs", miny=-0.4, maxy=-0.2,minx=OBS_DIST, maxx=OBS_DIST + 0.4)
+        #self.veryLongFrontRight.projectedDist = True
         #self.leftBlocked = False
         #self.rightBlocked = False
         
@@ -59,14 +142,21 @@ class MoveNode(FuturNode):
 
         self.drift = 0.0
 
-        self.turnoverTime = 0
+        self.rotateDir = 0.0
+        self.rotateCount = 0
 
         self.blockTime = 0
 
-
         self.lastAlternateDirChange = 0
+        self.driftDelay = 0
+        self.droped = False
 
 
+    def wheel_callback(self, data):
+
+        if data.state == 1:
+            self.droped = True
+        else: self.droped = False
 
     def isFinish(self):
         return self.iterations > 20000
@@ -78,10 +168,7 @@ class MoveNode(FuturNode):
         # chercher objet à tracker
 
 
-        #tempLeftBlocked = False
-        #tempRightBlocked = False
-        tempLeftDistance = 10000
-        tempRightDistance = 10000
+
 
 
 
@@ -91,120 +178,174 @@ class MoveNode(FuturNode):
         longRangeObs = False
 
         for point in pc.points:
-            if point.y >= -0.15 and point.y <= 0.0 and point.x > 0.05 and point.x < OBS_DIST:
-                
-                if point.x < tempLeftDistance:
-                    tempLeftDistance = point.x
+            self.frontLeft.computePoint(point)
+            self.frontRight.computePoint(point)
 
-                print("left blocked")
+
+            self.frontExtremeLeft.computePoint(point)
+            self.frontExtremeRight.computePoint(point)
+            self.longObstacle.computePoint(point)
+
+            self.frontPath.computePoint(point)
+
+            self.longFrontLeft.computePoint(point)
+            self.longFrontRight.computePoint(point)
+
+            #self.veryLongFrontLeft.computePoint(point)
+            #self.veryLongFrontRight.computePoint(point)
+            #if point.y >= -0.15 and point.y <= 0.0 and point.x > 0.05 and point.x < OBS_DIST:
+                
+            #    if point.x < tempLeftDistance:
+            #        tempLeftDistance = point.x
+
+            #    print("left blocked")
             
 
-            if point.y >= 0.0 and point.y <= 0.15 and point.x > 0.05 and point.x < OBS_DIST:
+            #if point.y >= 0.0 and point.y <= 0.15 and point.x > 0.05 and point.x < OBS_DIST:
                 
 
-                if point.x < tempRightDistance:
-                    tempRightDistance = point.x
-                print("right blocked")
+            #    if point.x < tempRightDistance:
+            #        tempRightDistance = point.x
+            #    print("right blocked")
+
+        self.frontLeft.update()
+        self.frontRight.update()
+        self.frontExtremeLeft.update()
+        self.frontExtremeRight.update()
+        self.longObstacle.update()
+        self.frontPath.update()
+
+        led0 = 0
+        led1 = 0
+
+        if self.longFrontLeft.blocked():
+            led0 = 2
+
+        if self.longFrontRight.blocked():
+            led1 = 2
+
+        if self.frontLeft.blocked():
+            led0 = 3
+
+        if self.frontRight.blocked():
+            led1 = 3
+
+        s = Led()
+        s.value = led0
+        self.led1_publisher.publish(s)
+
+        s.value = led1
+        self.led2_publisher.publish(s)
+
+        self.longFrontLeft.update()
+        self.longFrontRight.update()
+
+        #self.veryLongFrontLeft.update()
+        #self.veryLongFrontRight.update()
+
+        print("--------------------------------- BEGIN EXEC -----------------------")
+        self.frontLeft.debug()
+        self.frontRight.debug()
+        self.frontExtremeLeft.debug()
+        self.frontExtremeRight.debug()
+        self.longFrontLeft.debug()
+        self.longFrontRight.debug()
+        self.frontPath.debug()
 
 
-            if point.y >= -0.30 and point.y <= -0.15 and point.x > 0.20 and point.x < OBS_DIST + 0.8:
-                
-                tempDrift += 0.15
+        #self.veryLongFrontLeft.debug()
+        #self.veryLongFrontRight.debug()
+        #self.longObstacle.debug()
 
-                print("left drift")
+        #self.longObstacle.debug()
+        #self.frontPath.debug()
 
-
-            if point.y >= 0.15 and point.y <= 0.30 and point.x > 0.20 and point.x < OBS_DIST + 0.8:
-                
-                tempDrift -= -0.15
-
-                print("right drift")
-
-            if point.y >= -0.15 and point.y <= 0.0 and point.x > OBS_DIST and point.x < OBS_DIST + 0.4:
-                
-                tempDrift = 0.5
-                print("left short drift")
-
-
-            if point.y >= 0.0 and point.y <= 0.15 and point.x > OBS_DIST and point.x < OBS_DIST + 0.4:
-                
-                tempDrift = -0.5
-
-                print("right short rift")
-
-            if abs(point.y) < 0.20 and point.x >= 0.25 and point.x < 0.5:
-                longRangeObs = True
-
-
-        self.drift = tempDrift
-
-
-        self.leftObstacleDistance = tempLeftDistance
-        self.rightObstacleDistance = tempRightDistance
-        self.longRangeObs = longRangeObs
-
-
-        print(self.leftObstacleDistance)
-        print(self.rightObstacleDistance)
-        if self.leftObstacleDistance >= OBS_DIST and self.rightObstacleDistance >= OBS_DIST:
+        if self.frontLeft.blocked() == False and self.frontRight.blocked() >= False:
             self.blockTime = 0
         else:
             self.blockTime += 1
-
-            print(f"Block time : {self.blockTime}")
-
-    def isLeftObstacle(self):
-        return self.leftObstacleDistance < OBS_DIST
-
-    def isRightObstacle(self):
-        return self.rightObstacleDistance < OBS_DIST
+            print("Block time : " + str(self.blockTime))
 
     def activate(self):
         
-        
-        
+        if self.droped == True:
+            print("droped")
+            s = Sound()
+            s.value = 1
+            self.sound_publisher.publish(s)
+            return;
+
         velo = Twist()
 
+        
+
+
+        if self.driftDelay > 0:
+            self.driftDelay -= 1
 
         if self.blockTime > 5:
 
+        
+            s = Sound()
+            # 1
+            s.value = 5
+            self.sound_publisher.publish(s)
+            
             velo.linear.x = 0.01
 
-            if time.time() - self.lastAlternateDirChange > 6:
-                self.lastAlternateDirChange = time.time()
-                
-                if self.alternateDir:
-                    self.alternateDir = False
+            self.rotateCount = 20
+            self.blockTime = 0
+        
+            if self.rotateDir == 0.0:
+                if random.randint(0, 1) == 0:
+                    self.rotateDir = 1.5
                 else:
-                    
-                    self.alternateDir = True
+                    self.rotateDir = -1.5
 
 
-            if self.alternateDir == True:
-                velo.angular.z = 1.5
-            else:
-                velo.angular.z = -1.5
+        # Requete rotation non finie
+        if self.rotateCount > 0:
+            velo.linear.x = 0.01
+            velo.angular.z = self.rotateDir
 
+            self.rotateCount -= 1
+
+            print("Rotate mode")
+
+            if self.frontPath.blocked() == False:
+                velo.linear.x = 0.2
+                self.rotateCount = 0
+                velo.angular.z = 0.0
+                print("Unlocking rotate because front path free")
 
             self.velocity_publisher.publish(velo)
             return
 
-        if self.isLeftObstacle() == False and self.isRightObstacle() == False:
+
+        if self.frontLeft.blocked() == False and self.frontRight.blocked() == False:
             
-            print("[Mouvement] Avance")
+
+
+           
 
             if self.xSpeed == 0:
                 self.xSpeed = 0.03
 
-            if self.longRangeObs == False:
+            if self.longObstacle.blocked() == False:
 
-                if self.xSpeed < 0.8:
+                if self.xSpeed < 0.5:
                     self.xSpeed += 0.03
             
             
-
+                
             else:
-                self.xSpeed = 0.3
+                if self.xSpeed > 0.3:
+                    self.xSpeed -= 0.05
+                else:
+                    if self.xSpeed + 0.05 <= 0.3:
+                        self.xSpeed += 0.05
+
+                
                # if self.xSpeed > 0.3:
                #     self.xSpeed -= 0.05
 
@@ -212,57 +353,176 @@ class MoveNode(FuturNode):
                 #    if self.xSpeed < 0.3:
                 #        self.xSpeed += 0.05
 
-            velo.linear.x = self.xSpeed # target a 0.2 meter per second velocity
+           
+           
+            velo.linear.x = self.xSpeed
+
+            # Compute drift
+
+            if self.driftDelay <= 0:
+
+
+
+                if ((self.longFrontLeft.count > 0 and self.longFrontLeft.closestDistance < self.longFrontRight.closestDistance) or self.frontExtremeLeft.blocked()) and self.frontExtremeRight.blocked() == False:
+                    self.drift = -0.45 * 1 / self.longFrontLeft.closestDistance
+                    print("Drift vers Droite " + str(self.longFrontLeft.closestDistance))
+
+                    if self.frontExtremeLeft.blocked():
+                        self.drift -= 0.1
+
+                    self.driftDelay = 5
+
+                   
+
+                # obstacle lointaint à droite (donc on veut drifter à gauche) si il n'y a rien a proximité gauche
+                elif ((self.longFrontRight.count > 0 and self.longFrontRight.closestDistance < self.longFrontLeft.closestDistance) or self.frontExtremeRight.blocked()) and self.frontExtremeLeft.blocked() == False:
+                    self.drift = 0.45 * 1 / self.longFrontRight.closestDistance
+                    print("Drift vers Gauche " + str(self.longFrontRight.closestDistance))
+                
+                    if self.frontExtremeRight.blocked():
+                        self.drift += 0.1
+
+                    self.driftDelay = 5
+
+                    
+                #elif self.longObstacle.blocked():
+                    
+                #    print("Long obs u")
+
+                #    if self.veryLongFrontLeft.blocked():
+                #        self.drift = -0.35
+                #        self.driftDelay = 3
+
+                #    elif self.veryLongFrontRight.blocked():
+                #        self.drift = 0.35
+                #        self.driftDelay = 3
+
+                #    else:
+                #        self.drift = 0.0
+
+                else:
+                    self.drift = 0.0
+            else:
+
+                # on applique drift precedent si tjr valide
+
+                # drift vers droite et droite bloqué OU plus l'obs, on annule
+                if self.drift < 0 and (self.frontExtremeRight.blocked() or self.longFrontLeft.blocked() == False):
+                    self.drift = 0.0
+
+                # drift vers gauche et gauche bloqué Ou plus l'obs, on annule
+                if self.drift > 0 and (self.frontExtremeLeft.blocked() or self.longFrontRight.blocked() == False):
+                    self.drift = 0.0
+
 
             velo.angular.z = self.drift
 
         else:
 
+
             self.xSpeed = 0
 
+            # Cas où les deux front sont bloqués
+            if self.frontLeft.blocked() and self.frontRight.blocked():
+                
+                if self.frontExtremeLeft.blocked() != self.frontExtremeRight.blocked():
+                    
+                    self.rotateCount = 5
 
-            if self.isLeftObstacle() and self.isRightObstacle() == False:
-                velo.linear.x = 0.01
-                velo.linear.y = 0.0
-                velo.linear.z = 0.0
-                velo.angular.x = 0.0
-                velo.angular.y = 0.0
-                velo.angular.z = 0.9
-                print("[MOuvement] Rotation GAUCHE")
-            
-            
-            if self.isRightObstacle() and self.isLeftObstacle() == False:
-                velo.linear.x = 0.01
-                velo.linear.y = 0.0
-                velo.linear.z = 0.0
-                velo.angular.x = 0.0
-                velo.angular.y = 0.0
-                velo.angular.z = -0.9
-                print("[MOuvement] Rotation Droite")
+                    if self.frontExtremeLeft.blocked():
+                        # rotate droite
+                        self.rotateDir = -0.9
+                    else:
+                        # rotate gauche
+                        self.rotateDir = 0.9
+                else:
+                
+                    # demi tour vers gauche
 
-          
-            if self.isRightObstacle() and self.isLeftObstacle():
+                    if self.frontLeft.closestDistance > self.frontRight.closestDistance:
+                        self.rotateDir = 0.9
+                    else:
+                        # vers droite
+                        self.rotateDir = -0.9
+                    
+                    self.rotateCount = 10
+
+
+                
+
+                self.rotateCount -= 1
+
+                print("Rotate mode")
+
                 velo.linear.x = 0.01
-                velo.linear.y = 0.0
-                velo.linear.z = 0.0
-                velo.angular.x = 0.0
-                velo.angular.y = 0.0
+                velo.angular.z = self.rotateDir
+                self.velocity_publisher.publish(velo)
+
+                s = Led()
+                s.value = 3
+                self.led1_publisher.publish(s)
+
+                s = Led()
+                s.value = 3
+                self.led2_publisher.publish(s)
+                return
+
+
+            if self.frontLeft.blocked():
+
+                velo.linear.x = 0.01
+                self.rotateCount = 6
+
+                if self.frontExtremeLeft.blocked() == False:
+                    self.rotateDir = 0.9
+                    print("[MOuvement] GB Rotation vers Gauche")
+                else:
+                    self.rotateDir = -0.9
+                    print("[MOuvement] GB Rotation vers Droite")
+            
+                velo.linear.x = 0.01
+                velo.angular.z = self.rotateDir
+
+                
+
+            if self.frontRight.blocked():
+                velo.linear.x = 0.01
+                self.rotateCount = 6
+
+                if self.frontExtremeRight.blocked() == False:
+                    self.rotateDir = -0.9
+                    print("[MOuvement] DB Rotation vers Droite")
+                else:
+                    self.rotateDir = 0.9
+                    print("[MOuvement] DB Rotation vers Gauche")
+
+                velo.linear.x = 0.01
+                velo.angular.z = self.rotateDir
+
+                
+                
+            #if self.frontLeft.blocked() == True and self.frontRight.blocked() == True:
+            #    velo.linear.x = 0.01
+            #    velo.linear.y = 0.0
+            #    velo.linear.z = 0.0
+            #    velo.angular.x = 0.0
+            #    velo.angular.y = 0.0
 
                 # DIrection obstacle le plus loin
 
-                print(f"Distance : L = {self.leftObstacleDistance} R = {self.rightObstacleDistance}")
+                #print(f"Distance : L = {self.leftObstacleDistance} R = {self.rightObstacleDistance}")
 
 
 
-                if self.leftObstacleDistance > self.rightObstacleDistance:
-                    velo.angular.z = 0.9
-                else:
-                    velo.angular.z = -0.9
+            #    if self.frontLeft.closestDistance > self.frontRight.closestDistance:
+            #        velo.angular.z = 0.9
+            #    else:
+            #        velo.angular.z = -0.9
 
                 
                     
                     
-                print("[MOuvement] Rotation face")
+            #    print("[MOuvement] Rotation face")
                 
 
         self.iterations = self.iterations + 1

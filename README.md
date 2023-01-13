@@ -3,7 +3,7 @@ Repository projet LARM
 
 Ce projet contient les différents packages liés à l'UV LARM.
 
-** Packages contenus : **
+**Packages contenus :**
 - tuto_move : Tutoriel lié au mouvements
 - tuto_sim : Tutoriel lié à la simulation
 - tuto_visio : Tutoriel lié à la vision
@@ -17,14 +17,11 @@ NETWORK_ID : 4
 
 ### PC embarqué vincent :
 
-Lancer simulator :
+Lancer simulateur :
 ```
 ros2 launch challenge1 simulation.launch.py
 ```
 
-- Driver robot : ```ros2 run tbot_start start_base```
-- Bridge : ```ros2 run ros1_bridge dynamic_bridge```
-- Laser Scanner : ```ros2 run urg_node urg_node_driver --ros-args -p serial_port:=/dev/ttyACM0```
 - Node Camera : ```ros2 run challenge1 camera```
 - Node Scan Echo : ```ros2 run challenge1 scan_echo```
 - Node Move : ```ros2 run challenge1 move```
@@ -36,7 +33,7 @@ ros2 launch challenge1 simulation.launch.py
 ## Commandes globales
 
 ### base only
-```ros2 launch tbot_start base.launch.py```r
+```ros2 launch tbot_start base.launch.py```
 
 ### base + laser
 ```ros2 launch tbot_start minimal.launch.py```
