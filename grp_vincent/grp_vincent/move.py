@@ -53,7 +53,9 @@ class ObstacleAreaData():
         self.countCopy = 0
         self.closestDistanceCopy = 10000.0
 
-    ''' != 0 => qch dans la zone '''
+    '''
+    Il y a un objet dans la salle
+    '''
     def blocked(self):
         return self.closestDistance < 10000.0
 
@@ -126,18 +128,10 @@ class MoveNode(FuturNode):
         self.longFrontLeft.projectedDist = True
         self.longFrontRight.projectedDist = True
 
-        #self.veryLongFrontLeft = ObstacleAreaData(name="Very Long front left obs", miny=0.2, maxy=0.4,minx=OBS_DIST, maxx=OBS_DIST + 0.4)
-        #self.veryLongFrontLeft.projectedDist = True
-        #self.veryLongFrontRight = ObstacleAreaData(name="VeryLong front right obs", miny=-0.4, maxy=-0.2,minx=OBS_DIST, maxx=OBS_DIST + 0.4)
-        #self.veryLongFrontRight.projectedDist = True
-        #self.leftBlocked = False
-        #self.rightBlocked = False
         
         self.alternateDir = False
 
         self.longRangeObs = False
-
-        #self.turning = False
         self.xSpeed = 0.0
 
         self.drift = 0.0
@@ -162,20 +156,7 @@ class MoveNode(FuturNode):
         return self.iterations > 20000
 
     def scan_callback(self, pc):
-
-        # pc.points
-    
-        # chercher objet à tracker
-
-
-
-
-
-
         tempDrift = 0.0
-
-
-        longRangeObs = False
 
         for point in pc.points:
             self.frontLeft.computePoint(point)
@@ -190,23 +171,6 @@ class MoveNode(FuturNode):
 
             self.longFrontLeft.computePoint(point)
             self.longFrontRight.computePoint(point)
-
-            #self.veryLongFrontLeft.computePoint(point)
-            #self.veryLongFrontRight.computePoint(point)
-            #if point.y >= -0.15 and point.y <= 0.0 and point.x > 0.05 and point.x < OBS_DIST:
-                
-            #    if point.x < tempLeftDistance:
-            #        tempLeftDistance = point.x
-
-            #    print("left blocked")
-            
-
-            #if point.y >= 0.0 and point.y <= 0.15 and point.x > 0.05 and point.x < OBS_DIST:
-                
-
-            #    if point.x < tempRightDistance:
-            #        tempRightDistance = point.x
-            #    print("right blocked")
 
         self.frontLeft.update()
         self.frontRight.update()
@@ -240,8 +204,7 @@ class MoveNode(FuturNode):
         self.longFrontLeft.update()
         self.longFrontRight.update()
 
-        #self.veryLongFrontLeft.update()
-        #self.veryLongFrontRight.update()
+
 
         print("--------------------------------- BEGIN EXEC -----------------------")
         self.frontLeft.debug()
@@ -253,12 +216,7 @@ class MoveNode(FuturNode):
         self.frontPath.debug()
 
 
-        #self.veryLongFrontLeft.debug()
-        #self.veryLongFrontRight.debug()
-        #self.longObstacle.debug()
-
-        #self.longObstacle.debug()
-        #self.frontPath.debug()
+        # Détection blockage robot
 
         if self.frontLeft.blocked() == False and self.frontRight.blocked() >= False:
             self.blockTime = 0
@@ -277,8 +235,6 @@ class MoveNode(FuturNode):
 
         velo = Twist()
 
-        
-
 
         if self.driftDelay > 0:
             self.driftDelay -= 1
@@ -287,7 +243,6 @@ class MoveNode(FuturNode):
 
         
             s = Sound()
-            # 1
             s.value = 5
             self.sound_publisher.publish(s)
             
@@ -322,11 +277,8 @@ class MoveNode(FuturNode):
             return
 
 
-        if self.frontLeft.blocked() == False and self.frontRight.blocked() == False:
-            
-
-
-           
+        # Mur en face (proche)
+        if self.frontLeft.blocked() == False and self.frontRight.blocked() == False:   
 
             if self.xSpeed == 0:
                 self.xSpeed = 0.03
@@ -344,15 +296,6 @@ class MoveNode(FuturNode):
                 else:
                     if self.xSpeed + 0.05 <= 0.3:
                         self.xSpeed += 0.05
-
-                
-               # if self.xSpeed > 0.3:
-               #     self.xSpeed -= 0.05
-
-                #else:  
-                #    if self.xSpeed < 0.3:
-                #        self.xSpeed += 0.05
-
            
            
             velo.linear.x = self.xSpeed
@@ -383,22 +326,6 @@ class MoveNode(FuturNode):
                         self.drift += 0.1
 
                     self.driftDelay = 5
-
-                    
-                #elif self.longObstacle.blocked():
-                    
-                #    print("Long obs u")
-
-                #    if self.veryLongFrontLeft.blocked():
-                #        self.drift = -0.35
-                #        self.driftDelay = 3
-
-                #    elif self.veryLongFrontRight.blocked():
-                #        self.drift = 0.35
-                #        self.driftDelay = 3
-
-                #    else:
-                #        self.drift = 0.0
 
                 else:
                     self.drift = 0.0
@@ -498,33 +425,7 @@ class MoveNode(FuturNode):
 
                 velo.linear.x = 0.01
                 velo.angular.z = self.rotateDir
-
                 
-                
-            #if self.frontLeft.blocked() == True and self.frontRight.blocked() == True:
-            #    velo.linear.x = 0.01
-            #    velo.linear.y = 0.0
-            #    velo.linear.z = 0.0
-            #    velo.angular.x = 0.0
-            #    velo.angular.y = 0.0
-
-                # DIrection obstacle le plus loin
-
-                #print(f"Distance : L = {self.leftObstacleDistance} R = {self.rightObstacleDistance}")
-
-
-
-            #    if self.frontLeft.closestDistance > self.frontRight.closestDistance:
-            #        velo.angular.z = 0.9
-            #    else:
-            #        velo.angular.z = -0.9
-
-                
-                    
-                    
-            #    print("[MOuvement] Rotation face")
-                
-
         self.iterations = self.iterations + 1
         
         
@@ -537,9 +438,6 @@ class MoveNode(FuturNode):
             self.finish()
             
         else:
-           
-            
-
             self.velocity_publisher.publish(velo)
         
 
