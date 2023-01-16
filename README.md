@@ -1,7 +1,27 @@
 # larm_thibault_lemoigne
 Repository projet LARM
 
+Ce projet presente l'integration de ROS2 et d' un turtlebot.
 Ce projet contient les différents packages liés à l'UV LARM.
+
+# Installation 
+
+Installer ROS2 : 
+'''
+https://docs.ros.org/en/foxy/Tutorials/Beginner-CLI-Tools/Configuring-ROS2-Environment.html
+'''
+Nous utiliserons la version Foxy de ROS2
+
+Pour utiliser ce package, il suffit de le telecharger dans le dossier ros2_ws
+
+Pour compiler, il suffit de lancer :
+'''
+colcon build
+'''
+et de sourcer
+'''
+source install/setup.bash
+'''
 
 Développé par :
 - Emile Thibault
