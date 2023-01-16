@@ -27,6 +27,6 @@ def generate_launch_description():
         Node(package='rviz2',namespace='', executable='rviz2'),
         
 
-        Node(package='teleop_twist_keyboard', namespace='', executable='teleop_twist_keyboard', prefix='gnome-terminal -x', remappings=[('cmd_vel', '/multi/cmd_teleop')]),
+        Node(package='teleop_twist_keyboard', namespace='', executable='teleop_twist_keyboard', prefix='gnome-terminal -x', remappings=[('cmd_vel', '/cmd_vel')]),
     
     ])
