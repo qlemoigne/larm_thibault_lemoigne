@@ -19,14 +19,15 @@ def generate_launch_description():
     return LaunchDescription([
         
     
+        
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([launch_file_dir, '/full.launch.py'])
             ),
 
-        Node(package='grp_vincent', namespace='', executable='camera', prefix='gnome-terminal -x'),
+        Node(package='grp_vincent', namespace='', executable='camera'),
 
         Node(package='grp_vincent', namespace='', executable='scan_echo'),
 
-        Node(package='grp_vincent', namespace='', executable='move', prefix='gnome-terminal -x'),
+        Node(package='grp_vincent', namespace='', executable='move'),
     
     ])

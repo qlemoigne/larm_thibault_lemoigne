@@ -7,28 +7,31 @@ Ce projet contient les différents packages liés à l'UV LARM.
 - tuto_move : Tutoriel lié au mouvements
 - tuto_sim : Tutoriel lié à la simulation
 - tuto_visio : Tutoriel lié à la vision
-- challenge1 : Lié au premier challenge 1
+- grp_vincent : Lié aux challenges
 
 ## Informations de configuration
 
-NETWORK_ID : 4
+NETWORK_ID : 42
 
 ## Challenge 1 :
 
 ### PC embarqué vincent :
 
-Lancer simulateur :
+Lancer Robot (Driver + Laser + Camera + Move):
 ```
-ros2 launch challenge1 simulation.launch.py
+ros2 launch grp_vincent tbot.launch.py
 ```
-
-- Node Camera : ```ros2 run challenge1 camera```
-- Node Scan Echo : ```ros2 run challenge1 scan_echo```
-- Node Move : ```ros2 run challenge1 move```
-
 ### PC controleur robnet :
 
-- RVIZ2 : ```ros2 run rvid2```
+```
+ros2 launch grp_vincent visiualize.launch.py
+```
+
+### Simulation :
+
+```
+ros2 launch grp_vincent simulation.launch.py
+```
 
 ## Commandes globales
 

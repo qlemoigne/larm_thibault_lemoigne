@@ -227,10 +227,7 @@ class MoveNode(FuturNode):
     def activate(self):
         
         if self.droped == True:
-            print("droped")
-            s = Sound()
-            s.value = 1
-            self.sound_publisher.publish(s)
+            print("dropped")
             return;
 
         velo = Twist()
@@ -239,6 +236,7 @@ class MoveNode(FuturNode):
         if self.driftDelay > 0:
             self.driftDelay -= 1
 
+        # Detection d'une situation de blockage
         if self.blockTime > 5:
 
         
