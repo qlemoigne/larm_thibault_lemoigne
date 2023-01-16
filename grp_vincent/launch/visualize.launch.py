@@ -17,16 +17,12 @@ def generate_launch_description():
     launch_file_dir = os.path.join(tbot_sim_path, 'launch')
 
     return LaunchDescription([
-        
-    
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([launch_file_dir, '/full.launch.py'])
-            ),
 
-        Node(package='grp_vincent', namespace='', executable='camera', prefix='gnome-terminal -x'),
+
+        Node(package='rviz2', namespace='', executable='rviz2', prefix='gnome-terminal -x'),
 
         Node(package='grp_vincent', namespace='', executable='scan_echo'),
 
-        Node(package='grp_vincent', namespace='', executable='move', prefix='gnome-terminal -x'),
+        Node(package='teleop_twist_keyboard', namespace='', executable='teleop_twist_keyboard', prefix='gnome-terminal -x', remappings=[('cmd_vel', '/multi/cmd_teleop')]),
     
     ])
