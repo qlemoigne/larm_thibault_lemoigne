@@ -1,8 +1,11 @@
 # larm_thibault_lemoigne
 Repository projet LARM
 
-Ce projet presente l'integration de ROS2 et d' un turtlebot.
 Ce projet contient les différents packages liés à l'UV LARM.
+
+Développé par :
+- Emile Thibault
+- Quentin Lemoigne
 
 # Installation 
 
@@ -18,14 +21,14 @@ Pour compiler, il suffit de lancer :
 ```
 colcon build
 ```
-et de sourcer
+et de sourcer :
 ```
 source install/setup.bash
 ```
-
-Développé par :
-- Emile Thibault
-- Quentin Lemoigne
+Enfin de lancer les launchfiles : 
+```
+ros2 launch <packages> <launchfile>
+```
 
 **Packages contenus :**
 - tuto_move : Tutoriel lié au mouvements
