@@ -23,10 +23,10 @@ def generate_launch_description():
             PythonLaunchDescriptionSource([launch_file_dir, '/minimal.launch.py'])
             ),
 
-        #Node(package='challenge1', namespace='', executable='camera', prefix='gnome-terminal -x'),
+        #Node(package='grp_vincent', namespace='', executable='camera', prefix='gnome-terminal -x'),
 
         Node(package='grp_vincent', namespace='', executable='scan_echo'),
 
-        #Node(package='challenge1', namespace='', executable='move', prefix='gnome-terminal -x'),
+        Node(package='grp_vincent', namespace='', executable='move', prefix='gnome-terminal -x'),
     
     ])
