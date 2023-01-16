@@ -69,7 +69,7 @@ ros2 launch grp_vincent visiualize.launch.py
 ros2 launch grp_vincent simulation.launch.py
 ```
 
-# Commandes globales
+# Commandes interressantes
 
 ## base only
 ```ros2 launch tbot_start base.launch.py```
@@ -81,12 +81,12 @@ ros2 launch grp_vincent simulation.launch.py
 ```ros2 launch tbot_start full.launch.py```
 
 
-## VOir le graphique des frame
+## Voir le graphique des frame
 ```
 ros2 run tf2_tools view_frames.py
 ```
 
-## RVIZ2
+## RVIZ2 - Visualisation
 
 ```
 rviz2
