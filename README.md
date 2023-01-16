@@ -34,8 +34,7 @@ Lancer Robot (Driver + Laser + Camera + Move):
 ros2 launch grp_vincent tbot.launch.py
 ```
 
-
-## PC controleur robnet :
+## PC controleur robnet :
 
 ```
 ros2 launch grp_vincent visiualize.launch.py
