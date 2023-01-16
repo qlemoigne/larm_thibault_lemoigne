@@ -30,15 +30,15 @@ Enfin de lancer les launchfiles :
 ros2 launch <packages> <launchfile>
 ```
 
-# Informations de configuration
-N'oubliez pas de modifier votre bashrc si vous travaillez sur differents ordis
-NETWORK_ID : 42
-
 **Packages contenus :**
 - tuto_move : Tutoriel lié au mouvements
 - tuto_sim : Tutoriel lié à la simulation
 - tuto_visio : Tutoriel lié à la vision
 - grp_vincent : Lié aux challenges
+
+# Informations de configuration
+N'oubliez pas de modifier votre bashrc si vous travaillez sur differents ordis
+NETWORK_ID : 42
 
 # Challenge 1 :
 
