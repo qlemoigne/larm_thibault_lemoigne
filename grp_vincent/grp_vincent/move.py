@@ -7,15 +7,15 @@ from geometry_msgs.msg import Twist
 from sensor_msgs.msg import PointCloud
 
 
-import sys
-sys.path.append("/install/kobuki_ros_interfaces/lib/python3.8/site-packages")
-from kobuki_ros_interfaces.msg import Sound
-from kobuki_ros_interfaces.msg import Led
-from kobuki_ros_interfaces.msg import WheelDropEvent
+#import sys
+#sys.path.append("/install/kobuki_ros_interfaces/lib/python3.8/site-packages")
+#from kobuki_ros_interfaces.msg import Sound
+#from kobuki_ros_interfaces.msg import Led
+#from kobuki_ros_interfaces.msg import WheelDropEvent
 
 import time
 import random
-OBS_DIST = 0.30
+OBS_DIST = 0.35
 
 class FuturNode(Node):
 
@@ -95,15 +95,17 @@ class MoveNode(FuturNode):
         super().__init__('move')
         self.velocity_publisher = self.create_publisher(Twist, '/multi/cmd_nav', 10)
 
-        self.sound_publisher = self.create_publisher(Sound, '/commands/sound', 10)
+        #self.sound_publisher = self.create_publisher(Sound, '/commands/sound', 10)
 
-        self.led1_publisher = self.create_publisher(Led, '/commands/led1', 10)
+        #self.led1_publisher = self.create_publisher(Led, '/commands/led1', 10)
 
-        self.led2_publisher = self.create_publisher(Led, '/commands/led2', 10)
+        #self.led2_publisher = self.create_publisher(Led, '/commands/led2', 10)
 
 
         self.create_subscription(PointCloud, '/laser/pointcloud', self.scan_callback, 10)
-        self.create_subscription(WheelDropEvent, '/events/wheel_drop', self.wheel_callback, 10)
+        #self.create_subscription(WheelDropEvent, '/events/wheel_drop', self.wheel_callback, 10)
+
+        self.create_subscription(Twist, '/cmd_vel', self.cmdVelCallback, 10)
 
         self.iterations = 0
         self.timer = self.create_timer(0.1, self.activate) # 0.1 seconds to target a frequency of 10 hertz
@@ -114,7 +116,7 @@ class MoveNode(FuturNode):
         self.frontExtremeLeft = ObstacleAreaData(name="Front extreme Left", miny=0.19, maxy=0.4, minx=0.05, maxx=OBS_DIST)
         self.frontExtremeRight = ObstacleAreaData(name="Front extreme Right", miny=-0.4, maxy=-0.19, minx=0.05, maxx=OBS_DIST)
 
-       
+        self.lastOrder = Twist()
 
         self.frontPath = ObstacleAreaData(name="Front path", miny=-0.16, maxy=0.16 ,minx=0.1, maxx= 0.3)
 
@@ -145,6 +147,10 @@ class MoveNode(FuturNode):
         self.driftDelay = 0
         self.droped = False
 
+
+    def cmdVelCallback(self, twist):
+        print("New twist" + twist.linear.x)
+        self.lastOrder = twist
 
     def wheel_callback(self, data):
 
@@ -194,12 +200,12 @@ class MoveNode(FuturNode):
         if self.frontRight.blocked():
             led1 = 3
 
-        s = Led()
+        '''s = Led()
         s.value = led0
         self.led1_publisher.publish(s)
 
         s.value = led1
-        self.led2_publisher.publish(s)
+        self.led2_publisher.publish(s)'''
 
         self.longFrontLeft.update()
         self.longFrontRight.update()
@@ -239,11 +245,11 @@ class MoveNode(FuturNode):
         # Detection d'une situation de blockage
         if self.blockTime > 5:
 
-        
+            '''
             s = Sound()
             s.value = 5
             self.sound_publisher.publish(s)
-            
+            '''
             velo.linear.x = 0.01
 
             self.rotateCount = 20
@@ -275,7 +281,7 @@ class MoveNode(FuturNode):
             return
 
 
-        # Mur en face (proche)
+        # tirn rn face
         if self.frontLeft.blocked() == False and self.frontRight.blocked() == False:   
 
             if self.xSpeed == 0:
@@ -283,8 +289,9 @@ class MoveNode(FuturNode):
 
             if self.longObstacle.blocked() == False:
 
-                if self.xSpeed < 0.5:
-                    self.xSpeed += 0.03
+                if self.xSpeed < 0.6:
+                    self.xSpeed += 0.1
+                    # 0.03
             
             
                 
@@ -296,51 +303,14 @@ class MoveNode(FuturNode):
                         self.xSpeed += 0.05
            
            
-            velo.linear.x = self.xSpeed
+            #velo.linear.x = self.xSpeed
+            velo = self.lastOrder
+
+            print("Lasr order : " + str(velo.linear.x))
 
             # Compute drift
 
-            if self.driftDelay <= 0:
-
-
-
-                if ((self.longFrontLeft.count > 0 and self.longFrontLeft.closestDistance < self.longFrontRight.closestDistance) or self.frontExtremeLeft.blocked()) and self.frontExtremeRight.blocked() == False:
-                    self.drift = -0.45 * 1 / self.longFrontLeft.closestDistance
-                    print("Drift vers Droite " + str(self.longFrontLeft.closestDistance))
-
-                    if self.frontExtremeLeft.blocked():
-                        self.drift -= 0.1
-
-                    self.driftDelay = 5
-
-                   
-
-                # obstacle lointaint à droite (donc on veut drifter à gauche) si il n'y a rien a proximité gauche
-                elif ((self.longFrontRight.count > 0 and self.longFrontRight.closestDistance < self.longFrontLeft.closestDistance) or self.frontExtremeRight.blocked()) and self.frontExtremeLeft.blocked() == False:
-                    self.drift = 0.45 * 1 / self.longFrontRight.closestDistance
-                    print("Drift vers Gauche " + str(self.longFrontRight.closestDistance))
-                
-                    if self.frontExtremeRight.blocked():
-                        self.drift += 0.1
-
-                    self.driftDelay = 5
-
-                else:
-                    self.drift = 0.0
-            else:
-
-                # on applique drift precedent si tjr valide
-
-                # drift vers droite et droite bloqué OU plus l'obs, on annule
-                if self.drift < 0 and (self.frontExtremeRight.blocked() or self.longFrontLeft.blocked() == False):
-                    self.drift = 0.0
-
-                # drift vers gauche et gauche bloqué Ou plus l'obs, on annule
-                if self.drift > 0 and (self.frontExtremeLeft.blocked() or self.longFrontRight.blocked() == False):
-                    self.drift = 0.0
-
-
-            velo.angular.z = self.drift
+            
 
         else:
 
@@ -383,13 +353,13 @@ class MoveNode(FuturNode):
                 velo.angular.z = self.rotateDir
                 self.velocity_publisher.publish(velo)
 
-                s = Led()
+                '''s = Led()
                 s.value = 3
                 self.led1_publisher.publish(s)
 
                 s = Led()
                 s.value = 3
-                self.led2_publisher.publish(s)
+                self.led2_publisher.publish(s)'''
                 return
 
 

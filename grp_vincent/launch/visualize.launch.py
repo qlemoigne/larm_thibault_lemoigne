@@ -10,7 +10,9 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 from launch_ros.descriptions import ComposableNode
 
-
+#
+# Lancement visualisation et contrôle manuel
+#
 def generate_launch_description():
 
     tbot_sim_path = get_package_share_directory('tbot_start')

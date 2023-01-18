@@ -16,6 +16,15 @@ def generate_launch_description():
     tbot_sim_path = get_package_share_directory('tbot_start')
     launch_file_dir = os.path.join(tbot_sim_path, 'launch')
 
+    # ros2 launch slam_toolbox online_async_launch.py
+
+    slam_toolbox_path = get_package_share_directory('slam_toolbox')
+    launch_file_dir2 = os.path.join(slam_toolbox_path, 'launch')
+
+
+    naviation_path = get_package_share_directory('nav2_bringup')
+    launch_file_dir3 = os.path.join(naviation_path, 'launch')
+
     return LaunchDescription([
         
     
@@ -24,10 +33,17 @@ def generate_launch_description():
             PythonLaunchDescriptionSource([launch_file_dir, '/full.launch.py'])
             ),
 
-        Node(package='grp_vincent', namespace='', executable='camera'),
+        #Node(package='grp_vincent', namespace='', executable='camera'),
 
         Node(package='grp_vincent', namespace='', executable='scan_echo'),
 
         Node(package='grp_vincent', namespace='', executable='move'),
+
+
+         # PATH FINDING
+         # 
+         # IncludeLaunchDescription(
+         #   PythonLaunchDescriptionSource([launch_file_dir2, '/online_async_launch.py'])
+         #   )
     
     ])

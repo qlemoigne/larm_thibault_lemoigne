@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'camera = tuto_vision.camera:main',
+            'image_analyser = tuto_vision.image_analyser:main'
         ],
     },
 )
