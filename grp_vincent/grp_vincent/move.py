@@ -7,11 +7,13 @@ from geometry_msgs.msg import Twist
 from sensor_msgs.msg import PointCloud
 
 
-#import sys
-#sys.path.append("/install/kobuki_ros_interfaces/lib/python3.8/site-packages")
-#from kobuki_ros_interfaces.msg import Sound
-#from kobuki_ros_interfaces.msg import Led
-#from kobuki_ros_interfaces.msg import WheelDropEvent
+import time
+
+import sys
+sys.path.append("/install/kobuki_ros_interfaces/lib/python3.8/site-packages")
+from kobuki_ros_interfaces.msg import Sound
+from kobuki_ros_interfaces.msg import Led
+from kobuki_ros_interfaces.msg import WheelDropEvent
 
 import time
 import random
@@ -95,19 +97,18 @@ class MoveNode(FuturNode):
         super().__init__('move')
         self.velocity_publisher = self.create_publisher(Twist, '/multi/cmd_nav', 10)
 
-        #self.sound_publisher = self.create_publisher(Sound, '/commands/sound', 10)
+        self.sound_publisher = self.create_publisher(Sound, '/commands/sound', 10)
 
-        #self.led1_publisher = self.create_publisher(Led, '/commands/led1', 10)
+        self.led1_publisher = self.create_publisher(Led, '/commands/led1', 10)
 
-        #self.led2_publisher = self.create_publisher(Led, '/commands/led2', 10)
+        self.led2_publisher = self.create_publisher(Led, '/commands/led2', 10)
 
 
         self.create_subscription(PointCloud, '/laser/pointcloud', self.scan_callback, 10)
-        #self.create_subscription(WheelDropEvent, '/events/wheel_drop', self.wheel_callback, 10)
+        self.create_subscription(WheelDropEvent, '/events/wheel_drop', self.wheel_callback, 10)
 
         self.create_subscription(Twist, '/cmd_vel', self.cmdVelCallback, 10)
 
-        self.iterations = 0
         self.timer = self.create_timer(0.1, self.activate) # 0.1 seconds to target a frequency of 10 hertz
 
         self.frontLeft = ObstacleAreaData(name="Front Left", miny=0.0, maxy=0.19, minx=0.05, maxx=OBS_DIST)
@@ -145,12 +146,24 @@ class MoveNode(FuturNode):
 
         self.lastAlternateDirChange = 0
         self.driftDelay = 0
+        self.lastOrderTime = time.time() + 5
         self.droped = False
 
 
     def cmdVelCallback(self, twist):
-        print("New twist" + twist.linear.x)
+        print("New twist" + str(twist.linear.x))
         self.lastOrder = twist
+
+        self.lastOrder.linear.x *= 1.5
+        self.lastOrder.angular.z *= 1.6
+
+        # Notifier le fait qu'il a reçu un ordre
+        if time.time() - self.lastOrderTime > 5:
+            s = Sound()
+            s.value = 5
+            self.sound_publisher.publish(s)
+
+        self.lastOrderTime = time.time()
 
     def wheel_callback(self, data):
 
@@ -158,8 +171,6 @@ class MoveNode(FuturNode):
             self.droped = True
         else: self.droped = False
 
-    def isFinish(self):
-        return self.iterations > 20000
 
     def scan_callback(self, pc):
         tempDrift = 0.0
@@ -200,12 +211,12 @@ class MoveNode(FuturNode):
         if self.frontRight.blocked():
             led1 = 3
 
-        '''s = Led()
+        s = Led()
         s.value = led0
         self.led1_publisher.publish(s)
 
         s.value = led1
-        self.led2_publisher.publish(s)'''
+        self.led2_publisher.publish(s)
 
         self.longFrontLeft.update()
         self.longFrontRight.update()
@@ -238,175 +249,188 @@ class MoveNode(FuturNode):
 
         velo = Twist()
 
+        if time.time() - self.lastOrderTime >= 5:
+            print("MOde découverte")
+            if self.driftDelay > 0:
+                self.driftDelay -= 1
 
-        if self.driftDelay > 0:
-            self.driftDelay -= 1
-
-        # Detection d'une situation de blockage
-        if self.blockTime > 5:
-
-            '''
-            s = Sound()
-            s.value = 5
-            self.sound_publisher.publish(s)
-            '''
-            velo.linear.x = 0.01
-
-            self.rotateCount = 20
-            self.blockTime = 0
-        
-            if self.rotateDir == 0.0:
-                if random.randint(0, 1) == 0:
-                    self.rotateDir = 1.5
-                else:
-                    self.rotateDir = -1.5
-
-
-        # Requete rotation non finie
-        if self.rotateCount > 0:
-            velo.linear.x = 0.01
-            velo.angular.z = self.rotateDir
-
-            self.rotateCount -= 1
-
-            print("Rotate mode")
-
-            if self.frontPath.blocked() == False:
-                velo.linear.x = 0.2
-                self.rotateCount = 0
-                velo.angular.z = 0.0
-                print("Unlocking rotate because front path free")
-
-            self.velocity_publisher.publish(velo)
-            return
-
-
-        # tirn rn face
-        if self.frontLeft.blocked() == False and self.frontRight.blocked() == False:   
-
-            if self.xSpeed == 0:
-                self.xSpeed = 0.03
-
-            if self.longObstacle.blocked() == False:
-
-                if self.xSpeed < 0.6:
-                    self.xSpeed += 0.1
-                    # 0.03
-            
-            
+            # Detection d'une situation de blockage
+            if self.blockTime > 5:
                 
-            else:
-                if self.xSpeed > 0.3:
-                    self.xSpeed -= 0.05
-                else:
-                    if self.xSpeed + 0.05 <= 0.3:
-                        self.xSpeed += 0.05
-           
-           
-            #velo.linear.x = self.xSpeed
-            velo = self.lastOrder
+                velo.linear.x = 0.01
 
-            print("Lasr order : " + str(velo.linear.x))
-
-            # Compute drift
-
+                self.rotateCount = 20
+                self.blockTime = 0
             
-
-        else:
-
-
-            self.xSpeed = 0
-
-            # Cas où les deux front sont bloqués
-            if self.frontLeft.blocked() and self.frontRight.blocked():
-                
-                if self.frontExtremeLeft.blocked() != self.frontExtremeRight.blocked():
-                    
-                    self.rotateCount = 5
-
-                    if self.frontExtremeLeft.blocked():
-                        # rotate droite
-                        self.rotateDir = -0.9
+                if self.rotateDir == 0.0:
+                    if random.randint(0, 1) == 0:
+                        self.rotateDir = 1.5
                     else:
-                        # rotate gauche
-                        self.rotateDir = 0.9
-                else:
-                
-                    # demi tour vers gauche
-
-                    if self.frontLeft.closestDistance > self.frontRight.closestDistance:
-                        self.rotateDir = 0.9
-                    else:
-                        # vers droite
-                        self.rotateDir = -0.9
-                    
-                    self.rotateCount = 10
+                        self.rotateDir = -1.5
 
 
-                
+
+            # Requete rotation non finie
+            if self.rotateCount > 0:
+                velo.linear.x = 0.01
+                velo.angular.z = self.rotateDir
 
                 self.rotateCount -= 1
 
                 print("Rotate mode")
 
-                velo.linear.x = 0.01
-                velo.angular.z = self.rotateDir
+                if self.frontPath.blocked() == False:
+                    velo.linear.x = 0.2
+                    self.rotateCount = 0
+                    velo.angular.z = 0.0
+                    print("Unlocking rotate because front path free")
+
                 self.velocity_publisher.publish(velo)
-
-                '''s = Led()
-                s.value = 3
-                self.led1_publisher.publish(s)
-
-                s = Led()
-                s.value = 3
-                self.led2_publisher.publish(s)'''
                 return
 
+            # N'est pas bloqué
+            if self.frontLeft.blocked() == False and self.frontRight.blocked() == False:   
 
-            if self.frontLeft.blocked():
-
-                velo.linear.x = 0.01
-                self.rotateCount = 6
-
-                if self.frontExtremeLeft.blocked() == False:
-                    self.rotateDir = 0.9
-                    print("[MOuvement] GB Rotation vers Gauche")
-                else:
-                    self.rotateDir = -0.9
-                    print("[MOuvement] GB Rotation vers Droite")
+                if self.xSpeed == 0:
+                    self.xSpeed = 0.4
             
-                velo.linear.x = 0.01
-                velo.angular.z = self.rotateDir
+            
+                velo.linear.x = self.xSpeed
+                #velo = self.lastOrder
 
-                
+                #print("Lasr order : " + str(velo.linear.x))
 
-            if self.frontRight.blocked():
-                velo.linear.x = 0.01
-                self.rotateCount = 6
+                # Compute drift
+                # Compute drift
 
-                if self.frontExtremeRight.blocked() == False:
-                    self.rotateDir = -0.9
-                    print("[MOuvement] DB Rotation vers Droite")
+                if self.driftDelay <= 0:
+
+
+
+                    if ((self.longFrontLeft.count > 0 and self.longFrontLeft.closestDistance < self.longFrontRight.closestDistance) or self.frontExtremeLeft.blocked()) and self.frontExtremeRight.blocked() == False:
+                        self.drift = -0.45 * 1 / self.longFrontLeft.closestDistance
+                        print("Drift vers Droite " + str(self.longFrontLeft.closestDistance))
+
+                        if self.frontExtremeLeft.blocked():
+                            self.drift -= 0.1
+
+                        self.driftDelay = 5
+
+                    
+
+                    # obstacle lointaint à droite (donc on veut drifter à gauche) si il n'y a rien a proximité gauche
+                    elif ((self.longFrontRight.count > 0 and self.longFrontRight.closestDistance < self.longFrontLeft.closestDistance) or self.frontExtremeRight.blocked()) and self.frontExtremeLeft.blocked() == False:
+                        self.drift = 0.45 * 1 / self.longFrontRight.closestDistance
+                        print("Drift vers Gauche " + str(self.longFrontRight.closestDistance))
+                    
+                        if self.frontExtremeRight.blocked():
+                            self.drift += 0.1
+
+                        self.driftDelay = 5
+
+                    else:
+                        self.drift = 0.0
                 else:
-                    self.rotateDir = 0.9
-                    print("[MOuvement] DB Rotation vers Gauche")
 
-                velo.linear.x = 0.01
-                velo.angular.z = self.rotateDir
+                    # on applique drift precedent si tjr valide
+
+                    # drift vers droite et droite bloqué OU plus l'obs, on annule
+                    if self.drift < 0 and (self.frontExtremeRight.blocked() or self.longFrontLeft.blocked() == False):
+                        self.drift = 0.0
+
+                    # drift vers gauche et gauche bloqué Ou plus l'obs, on annule
+                    if self.drift > 0 and (self.frontExtremeLeft.blocked() or self.longFrontRight.blocked() == False):
+                        self.drift = 0.0
+
+
+                velo.angular.z = self.drift
+
+            else:
+                self.xSpeed = 0
+
+                # Cas où les deux front sont bloqués
+                if self.frontLeft.blocked() and self.frontRight.blocked():
+                    
+                    if self.frontExtremeLeft.blocked() != self.frontExtremeRight.blocked():
+                        
+                        self.rotateCount = 5
+
+                        if self.frontExtremeLeft.blocked():
+                            # rotate droite
+                            self.rotateDir = -0.9
+                        else:
+                            # rotate gauche
+                            self.rotateDir = 0.9
+                    else:
+                    
+                        # demi tour vers gauche
+
+                        if self.frontLeft.closestDistance > self.frontRight.closestDistance:
+                            self.rotateDir = 0.9
+                        else:
+                            # vers droite
+                            self.rotateDir = -0.9
+                        
+                        self.rotateCount = 10
+
+
+            
+                    self.rotateCount -= 1
+
+                    print("Rotate mode")
+
+                    velo.linear.x = 0.01
+                    velo.angular.z = self.rotateDir
+                    self.velocity_publisher.publish(velo)
+
+                    s = Led()
+                    s.value = 3
+                    self.led1_publisher.publish(s)
+
+                    s = Led()
+                    s.value = 3
+                    self.led2_publisher.publish(s)
+                    return
+
+                # bloqué gauche
+                if self.frontLeft.blocked():
+
+                    velo.linear.x = 0.01
+                    self.rotateCount = 6
+
+                    if self.frontExtremeLeft.blocked() == False:
+                        self.rotateDir = 0.9
+                        print("[MOuvement] GB Rotation vers Gauche")
+                    else:
+                        self.rotateDir = -0.9
+                        print("[MOuvement] GB Rotation vers Droite")
                 
-        self.iterations = self.iterations + 1
-        
-        
-        if self.isFinish():
-            self.timer.cancel()
-            velo.linear.x = 0.0
-            velo.angular.x = 0.0
-            self.velocity_publisher.publish(velo)
+                    velo.linear.x = 0.01
+                    velo.angular.z = self.rotateDir
 
-            self.finish()
+                    
+                # bloqué droite
+                if self.frontRight.blocked():
+                    velo.linear.x = 0.01
+                    self.rotateCount = 6
+
+                    if self.frontExtremeRight.blocked() == False:
+                        self.rotateDir = -0.9
+                        print("[MOuvement] DB Rotation vers Droite")
+                    else:
+                        self.rotateDir = 0.9
+                        print("[MOuvement] DB Rotation vers Gauche")
+
+                    velo.linear.x = 0.01
+                    velo.angular.z = self.rotateDir
             
         else:
-            self.velocity_publisher.publish(velo)
+            velo = self.lastOrder
+            print("Listening order")
+        
+
+        self.velocity_publisher.publish(velo)
+        
         
 
         

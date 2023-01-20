@@ -8,7 +8,7 @@ import time, numpy as np
 import sys, cv2
 
 from sensor_msgs.msg import Image
-
+from std_msgs.msg import String
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -77,15 +77,13 @@ class ObjectsDetector(Node):
         self.staticLow = np.array([0,0,0]) # Slightly darker and dimmer orange
         self.staticHigh = np.array([0,0,0]) # Slighty lighter and brighter orange 
 
-        #self.orangeReference = [6, 150, 180]
 
         # Creation topic sensor_msgs/image
-        #self.image_publisher = self.create_publisher(Image, '/camera/image', 10)
-        #self.depth_publisher = self.create_publisher(Image, '/camera/depth', 10)
-        #self.infra_publisher1 = self.create_publisher(Image, '/camera/infrared1', 10)
-        #self.infra_publisher2 = self.create_publisher(Image, '/camera/infrared2', 10)
+
         self.create_subscription(Image, '/img', self.onImage, 10)
         self.create_subscription(Image, '/depth', self.onDepth, 10)
+
+        self.object_publisher = self.create_publisher(String, '/detection', 10)
 
  
 
@@ -193,7 +191,9 @@ class ObjectsDetector(Node):
                 if w > 10 and y < 500:
                     cv2.rectangle(cv_image, (x, y), (x + w,y + h), (0, 0, 255), 2)
                     print("Found orange bottle : " + str(x) + " , " + str(y))
-
+                    s = String()
+                    s.data = "Found orange bottle"
+                    self.object_publisher.publish(s)
 
 
                 
