@@ -121,8 +121,8 @@ if not cascadeClassifier.load(cv2.samples.findFile("test.xml")):
 # Compute the estimated position of the bottle with the image processing results
 color = 8 # 8Hue value for bright orange 
 # We can adjust saturation to include more images
-lo = np.array([color - 4, 160, 160]) # Slightly darker and dimmer orange
-hi = np.array([color + 4, 255, 255]) # Slighty lighter and brighter orange 
+lo = np.array([color - 3, 240, 240]) # Slightly darker and dimmer orange
+hi = np.array([color + 3, 255, 255]) # Slighty lighter and brighter orange 
 
 # lo = np.array([color - 8, 220, 220]) # Slightly darker and dimmer orange
 #hi = np.array([color + 8, 255, 255]) # Slighty lighter and brighter orange #

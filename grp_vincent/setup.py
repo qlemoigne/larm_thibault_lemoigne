@@ -25,7 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'scan_echo = grp_vincent.scan_echo:main',
-            'camera = grp_vincent.camera:main',
+            'camera = grp_vincent.realsense:process_img',
             'move = grp_vincent.move:main',
             'objects = grp_vincent.objects:main'
         ],

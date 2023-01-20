@@ -29,17 +29,17 @@ class CameraReader(Node):
         
 
     def cameraImageCallback(self, data):
-        print("Recived image")
         self.lastImage = data
 
 
     def cameraDepthCallback(self, data):
-        print("Recived depth")
         self.lastDepth = data
 
 
     def analyse(self):
         print("Analysing ...")
+
+        
 
         
 
