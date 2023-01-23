@@ -40,6 +40,62 @@ ros2 launch <packages> <launchfile>
 N'oubliez pas de modifier votre bashrc si vous travaillez sur differents ordis
 NETWORK_ID : 42
 
+# Challenge 2 :
+
+## Résumé
+
+Le robot trace une carte de son environnement et est capable d'aller à un point précis transmis sur RVIZ.
+
+Il envoit aussi un message dans le topic /detection lorsqu'il detecte une bouteille rouge ou noire.
+
+Ce package contient les nodes suivantes en plus de celles de base :
+- scan_echo : Nettoie et transmet les données du laser sur un topic
+- move : Gére le mouvement
+- objects : Détection des objets
+
+## Calibration
+
+Avant de lancer, il peut être utile de calibrer la détection en particulier pour les bouteilles orange.
+
+Pour on peut lancer le fichier ```calibrer.py```
+
+Deux fenêtre s'ouvrent alors :
+- Retour vidéo
+- Masque
+
+TODO A compléter
+
+## Principe de la dététection des objects
+
+Pour les bouteilles oranges :
+
+TODO A compléter
+
+Pour les bouteilles orange :
+
+TODO A compléter
+On utilise un template.
+
+## PC embarqué vincent :
+
+Lancer Robot (Driver + Laser + Camera + Move + Détection + Mapper):
+
+```
+ros2 launch grp_vincent tbot.launch.py
+```
+
+## PC controleur robnet :
+
+```
+ros2 launch grp_vincent visiualize.launch.py
+```
+
+## Simulation :
+
+```
+ros2 launch grp_vincent simulation.launch.py
+```
+
 # Challenge 1 :
 
 ## Résumé
