@@ -13,50 +13,13 @@ import cv2
 from cv_bridge import CvBridge, CvBridgeError
 
 import pyrealsense2 as rs
+
+import math
 DST = 10
+import matplotlib.pyplot as plt
+from skimage.measure import label, regionprops
 
 
-
-class Area():
-
-    def __init__(self, minx, maxx, miny, maxy):
-        self.minx = minx
-        self.maxx = maxx
-        self.miny = miny
-        self.maxy = maxy
-
-
-    def isCommon(self, area):
-        
-        if ( (area.minx >= self.minx - DST and area.minx <= self.maxx + DST) or (area.maxx >= self.minx - DST and area.maxx <= self.maxx + DST)) and ((area.miny >= self.miny - DST and area.miny <= self.maxy + DST) or (area.maxy >= self.miny - DST and area.maxy <= self.maxy + DST)):
-            return True
-
-
-        return False    
-    
-    def isEmpty(self):
-        return self.sizeX() * self.sizeY() < 100
-
-    def sizeX(self):
-        return self.maxx - self.minx
-
-    def sizeY(self):
-        return self.maxy - self.miny
-
-    def merge(self, area):
-
-        newArea = Area(minx= min(self.minx, area.minx), maxx= max(self.maxx, area.maxx), miny= min(self.miny, area.miny), maxy= max(self.maxy, area.maxy))
-        
-
-        return newArea
-
-    ''' renvoit si cette area est plus petite que celle en param'''
-    def isSmaller(self, area):
-        return self.sizeX() * self.sizeY() < area.sizeX() * area.sizeY()
-class Filter():
-    def __init__(self, low, high):
-        self.low = low
-        self.high = high
 
 class ObjectsDetector(Node):
 
@@ -84,7 +47,32 @@ class ObjectsDetector(Node):
         self.create_subscription(Image, '/depth', self.onDepth, 10)
 
         self.object_publisher = self.create_publisher(String, '/detection', 10)
+        
 
+        # Noyau
+        self.kernel2 = np.ones((2, 2), np.uint8)
+        self.kernel3 = np.ones((3, 3), np.uint8)
+        self.kernel4 = np.ones((4, 4), np.uint8)
+        self.kernel6 = np.ones((6, 6), np.uint8)
+
+
+        ####### CRITERES DE CALIBRATION
+
+        # Orange
+        #self.orangeFilters = [np.array([13,198,209]),np.array([11,237,194]),np.array([13,147,254]),np.array([12,229,249]),np.array([19,136,254]),]
+        #self.orangeLow = np.array([5,33,53])
+        #self.orangeHigh = np.array([5,32,53])
+
+        self.orangeFilters = [np.array([15,244,252]),np.array([10,255,246]),np.array([18,209,255]),np.array([24,252,254]),]
+        self.orangeLow = np.array([4,35,60])
+        self.orangeHigh = np.array([4,35,60])
+
+        '''
+Calibration
+        self.orangeFilters = [np.array([15,244,252]),np.array([10,255,246]),np.array([18,209,255]),np.array([24,252,254]),]
+self.orangeLow = np.array([4,35,60])
+self.orangeHigh = np.array([4,35,60])
+'''
  
 
 
@@ -111,27 +99,6 @@ class ObjectsDetector(Node):
         except CvBridgeError as e:
             print("CvBridge Error: {0}".format(e))
 
-
-    def souris(self, event, x, y, flags, param):
-    
-        
-
-
-        if event==cv2.EVENT_LBUTTONDOWN:
-            #self.orangeReference = self.image_hsv[y, x]
-
-            h = self.image_hsv[y, x][0]
-            s = self.image_hsv[y, x][1]
-            v = self.image_hsv[y, x][2]
-            print("COlor: " + str(h) + ", " + str(s) + ", " + str(v))
-
-            filter = Filter(np.array([h - 2, s - 2, v - 2]), np.array([h + 2, s +   2, v + 2]))
-
-            self.filters.append(filter)
-            #self.lo = [self.orangeReference[0] - 5, self.orangeReference[1] - 10, self.orangeReference[2] - 10]
-            #self.hi = [self.orangeReference[0] + 5, self.orangeReference[1] + 10, self.orangeReference[2] + 10]
-
-        
 
 
     '''
@@ -160,81 +127,68 @@ class ObjectsDetector(Node):
             kp = sift.detect(gray, None)
 
             #cv_image = cv2.drawKeypoints(cv_image, kp, cv_image)
-
-
             mask = cv2.inRange(image_hsv, self.staticLow, self.staticHigh)
 
-            for filter in self.filters:
-                temp_mask = cv2.inRange(image_hsv, filter.low, filter.high)
+            for filter in self.orangeFilters:
+                temp_mask = cv2.inRange(image_hsv, filter - self.orangeLow, filter + self.orangeHigh)
                 mask = cv2.add(mask, temp_mask)
-            #mask = cv2.inRange(image_hsv, self.lo, self.hi) # bit-mask selecting desired pixel
+            
+            # Mask contient tout ce qui a été filtré en orangr
 
+            mask = cv2.erode(mask, kernel=self.kernel2, iterations=4)
+            mask = cv2.dilate(mask, kernel=self.kernel4, iterations=5)
 
-            #mask = cv2.add(mask1, mask2)
-            #mask = cv2.dilate(mask, self.kernel, iterations=5)
+            mask = cv2.erode(mask, kernel=self.kernel6, iterations=2)
+            mask = cv2.dilate(mask, kernel=self.kernel4, iterations=2)
 
             cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-            cv2.setMouseCallback('RealSense', self.souris)
+            #cv2.setMouseCallback('RealSense', self.souris)
             
-            elements = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
-
-            foundArea = Area(minx=0, maxx=0, miny=0, maxy=0)
-
-
-            if len(elements) > 0:
-                c = max(elements, key=cv2.contourArea)
-                x,y,w,h = cv2.boundingRect(c)
-                #areas = []
-
-                #print("cc")
-
-                if w > 10 and y < 500:
-                    cv2.rectangle(cv_image, (x, y), (x + w,y + h), (0, 0, 255), 2)
-                    print("Found orange bottle : " + str(x) + " , " + str(y))
-                    s = String()
-                    s.data = "Found orange bottle"
-                    self.object_publisher.publish(s)
+            label_image = label(mask)
+            regions = regionprops(label_image)
+            #print(len(regions))
 
 
-                
-                '''for c in elements:
-                    x,y,w,h = cv2.boundingRect(c)
-                    
-                    if w > 10 and y < 500: 
+            for props in regions:
+                y0, x0 = props.centroid
+                orientation = props.orientation
+
+                minr, minc, maxr, maxc = props.bbox
+
+                rsize = maxr - minr
+                csize = maxc - minc
+
+                ratio = csize / rsize
+
+                if csize > rsize:
+                    continue
+
+                if props.extent > 0.85 or props.extent < 0.35:
+                    continue
+
+
+                # test horizontal
+
+                if ratio <= 0.5 and ratio >= 0.3:
+                    perimetre = 2 * rsize + 2 * csize
+
+                    if perimetre > 1000 or perimetre < 90:
                         continue
 
-                    tempArea = Area(minx=x, miny=y, maxx=x+w, maxy=y+h)
 
-                    if tempArea.sizeX() * tempArea.sizeY() >= 1000:
-                        continue
+                    cv2.rectangle(cv_image, (int(minc), int(minr)), (int(maxc) ,int(maxr)), (255, 0, 0), 2)
+                    print("Bottle orange detected")
 
-                    if len(areas) == 0:  
-                        areas.append(tempArea)
+                    # Limiter vrai déclanchement à 2 minimum
 
-                    else:
-                        
-                        found = False
-                        for i in range(len(areas)):
-                            if areas[i].isCommon(tempArea):
-                                areas[i] = areas[i].merge(tempArea)
-                                found = True
-                                break
+                    data = String()
+                    data.data = "Bouteille orange"
+                    self.object_publisher.publish(data)
 
-                        if found == False:
-                            areas.append(tempArea)
 
-                
-                for area in areas:
-                    
-                    if foundArea.isSmaller(area):
-                        foundArea = area'''
 
             
-            if foundArea.isEmpty() == False:
-                cv2.rectangle(cv_image, (foundArea.minx, foundArea.miny), (foundArea.maxx, foundArea.maxy), (0, 0, 255), 2)
-                print("Found orange bottle : " + str(foundArea.minx) + " " + str(foundArea.maxx) + " " + str(foundArea.miny) + " " + str(foundArea.maxy))
             cv2.imshow('RealSense', cv_image)
-            cv2.imshow('t', image_hsv)
             cv2.imshow('mask', mask)
             cv2.imshow('t2', cv_image)
             cv2.waitKey(1)

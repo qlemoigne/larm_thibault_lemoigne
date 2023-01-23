@@ -57,8 +57,8 @@ def souris(event, x, y, flags, param):
 
 
     if event==cv2.EVENT_LBUTTONDOWN:
-        h = image_hsv[y, x][0]
-        s = image_hsv[y, x][1]
+        h = color_image[y, x][0]
+        s = color_image[y, x][1]
         v = image_hsv[y, x][2]
         
         print("COlor: " + str(h) + ", " + str(s) + ", " + str(v))
@@ -115,6 +115,19 @@ try:
     cv2.createTrackbar('delta V', 'Calibration',60, 70,onTrackChange)
     #cv2.createTrackbar('V+', 'Calibration', 0, 64,onTrackChange)
 
+    template = cv2.imread("teilleAdetourer-removebg-preview.png")
+    scale_percent = 30 # percent of original size
+    width = int(template.shape[1] * scale_percent / 100)
+    height = int(template.shape[0] * scale_percent / 100)
+    dim = (width, height)
+
+    # resize image
+    template = cv2.resize(template, dim, interpolation = cv2.INTER_AREA)
+    template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+    template = cv2.Canny(template, 50, 200)
+
+    (tH, tW) = template.shape[:2]
+
     while True:
 
         # Wait for a coherent tuple of frames: depth, color and accel
@@ -148,68 +161,33 @@ try:
             mask = cv2.add(mask, temp_mask)
 
             
+        gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
+        red_image = color_image[:,:,2]
+       
+        edged = cv2.Canny(gray_image, 50, 100)
+    
 
-        mask = cv2.erode(mask, kernel=kernel2, iterations=4)
-        mask = cv2.dilate(mask, kernel=kernel4, iterations=5)
+    
+        result = cv2.matchTemplate(edged, template, cv2.TM_CCORR_NORMED)
+        (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result)
 
-        mask = cv2.erode(mask, kernel=kernel6, iterations=2)
-        mask = cv2.dilate(mask, kernel=kernel4, iterations=2)
-        
-        # Show images
-        '''elements = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
-
-
-
-        if len(elements) > 0:
-            c = max(elements, key=cv2.contourArea)
-            x,y,w,h = cv2.boundingRect(c)
-            #areas = []
-
-            #print("cc")
-
-            if w > 10 and y < 500:
-                cv2.rectangle(color_image, (x, y), (x + w,y + h), (0, 0, 255), 2)
-                print("Found orange bottle : " + str(x) + " , " + str(y))'''
-
-        label_image = label(mask)
-        regions = regionprops(label_image)
-        #print(len(regions))
+        #print(maxVal)
+        #if maxVal > 21000000.0:
+        if maxVal > 0.19:
+            cv2.rectangle(color_image, (maxLoc[0], maxLoc[1]), (maxLoc[0] + tW, maxLoc[1] + tH), (0, 255, 0), 2)
 
 
-        for props in regions:
-            y0, x0 = props.centroid
+            red_image = red_image[maxLoc[1]:maxLoc[1] + tH, maxLoc[0]:maxLoc[0] + tW]
 
+            count = np.sum(red_image >= 100) -  np.sum(red_image <= 160)
 
-            minr, minc, maxr, maxc = props.bbox
-
-            rsize = maxr - minr
-            csize = maxc - minc
-
-            ratio = csize / rsize
-
-            if csize > rsize:
-                continue
-
-            if props.extent > 0.85 or props.extent < 0.35:
-                continue
-
-
-            # test horizontal
-
-            if ratio <= 0.5 and ratio >= 0.3:
-                
-                perimetre = 2 * rsize + 2 * csize
-
-                if perimetre > 1000 or perimetre < 90:
-                    continue
-
-
-                cv2.rectangle(color_image, (int(minc), int(minr)), (int(maxc) ,int(maxr)), (255, 0, 0), 2)
-                
-                print("new !!")
+            print(count)
+            cv2.imshow('red_image', red_image)
 
         cv2.imshow('Calibration', color_image)
         cv2.imshow('Masque', mask)
+        cv2.imshow("contours", edged)
+        #cv2.imshow("template", template)
         #cv2.imshow('Résultat', mask)
         cv2.waitKey(1)
         
