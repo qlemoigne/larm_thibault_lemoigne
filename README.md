@@ -4,6 +4,18 @@
 
 Ce repository contient les différents packages liés à l'UV LARM développé par Emile Thibault et Quentin Lemoigne. Il permet de créer une carte de l'environnement à travers un robot qui est capable d'aller à un point précis transmis sur RVIZ. Il envoie également un message dans le topic /detection lorsqu'il détecte une bouteille rouge ou noire.
 
+## Presentation
+
+Ce projet est un système de navigation autonome pour un robot utilisant ROS2 (Robot Operating System). Il utilise les données de capteurs de profondeur et de caméra pour créer une carte de l'environnement et permettre au robot de se déplacer vers un point spécifié via RVIZ. Le package contient également des fonctionnalités de détection d'objets, telles que la détection de bouteilles rouges et noires, qui envoient des messages dans le topic /detection lorsqu'elles sont détectées. Les nodes clés de ce package incluent scan_echo, qui nettoie et transmet les données du laser, move, qui gère les commandes de mouvement et objects, qui effectue la détection des objets.
+
+Pour lancer le projet, il est important d'utiliser les fichiers launch suivants :
+
+    base.launch.py : lance les nodes de base uniquement
+    minimal.launch.py : lance les nodes de base avec le laser
+    full.launch.py : lance les nodes de base, le laser et la caméra
+    calibrer.py : utilisé pour calibrer les filtres couleur pour la détection des objets
+    rviz2 : utilisé pour visualiser les informations transmises par les différents topics.
+
 
 ## Installation
 
@@ -32,17 +44,14 @@ N'oubliez pas de configurer votre fichier bashrc si vous travaillez sur différe
 
 Avant de lancer le package, il peut être utile de calibrer la détection en particulier pour les bouteilles orange. Pour cela, vous pouvez exécuter le fichier calibrer.py. Deux fenêtres s'ouvriront alors : une pour le retour vidéo et une pour le masque.
 
+# Challenge 1 :
 
 ## Résumé
 
-Le robot trace une carte de son environnement et est capable d'aller à un point précis transmis sur RVIZ.
-
-Il envoit aussi un message dans le topic /detection lorsqu'il detecte une bouteille rouge ou noire.
-
 Ce package contient les nodes suivantes en plus de celles de base :
 - scan_echo : Nettoie et transmet les données du laser sur un topic
-- move : Gére le mouvement
-- objects : Détection des objets
+- move : Gére le mouvement selon les informations du laser
+- camera : Transmet les données de la camera sur un topic
 
 ## PC embarqué vincent :
 
@@ -55,36 +64,7 @@ ros2 launch grp_vincent tbot.launch.py
 ## PC controleur robnet - visualisation :
 
 ```
-ros2 launch grp_vincent visiualize.launch.py
-```
-
-## Simulation :
-
-```
-ros2 launch grp_vincent simulation.launch.py
-```
-
-# Challenge 1 :
-
-## Résumé
-
-Ce package contient les nodes suivantes en plus de celles de base :
-- scan_echo : Nettoie et transmet les données du laser sur un topic
-- move : Gére le mouvement selon les informations du laser
-- camera : Transmet les données de la camera sur un topic
-
-## PC embarqué vincent :
-
-Lancer Robot (Driver + Laser + Camera + Move):
-
-```
-ros2 launch grp_vincent tbot.launch.py
-```
-
-## PC controleur robnet :
-
-```
-ros2 launch grp_vincent visiualize.launch.py
+ros2 launch grp_vincent visualize.launch.py
 ```
 
 ## Simulation :
@@ -96,6 +76,7 @@ ros2 launch grp_vincent simulation.launch.py
 # Challenge 2 : Traitement d'image de la Kinect embarquée
 
 Le challenge 2 de notre projet consiste à utiliser la Kinect embarquée sur notre robot pour détecter les bouteilles rouges et noires dans l'environnement. Pour ce faire, nous avons écrit un script Python qui utilise les bibliothèques `OpenCV` et `Pyrealsense2` pour traiter les images capturées par la Kinect.
+
 ### Prérequis
 
     > Avoir installé la bibliothèque Pyrealsense2
@@ -120,25 +101,9 @@ Enfin, il est important de noter que le script utilise une méthode de détectio
 
 Les résultats de la détection des bouteilles rouges et noires sont publiés sur le topic `/detection`
 
-# Arborescence :
+    
 
-*Fichiers executables*
-
-calibrer.py
-> /grp_vincent/grp_vincent/
->                          move.py
->                          objects.py
->                          scan_echo.py
->             /launch/_pycache/
->                              simulation.launch.py
->                              tbot.launch.py
->                              visualize.launch.py
-
-## Description des fichiers
-                        
-      
-
-## Commandes utiles
+# Commandes utiles
 
 Les commandes suivantes sont utiles pour lancer les différents composants de notre projet :
 
