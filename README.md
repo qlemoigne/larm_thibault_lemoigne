@@ -1,4 +1,36 @@
 # larm_thibault_lemoigne
+
+Introduction
+
+Ce repository contient les différents packages liés à l'UV LARM développé par Emile Thibault et Quentin Lemoigne. Il permet de créer une carte de l'environnement à travers un robot qui est capable d'aller à un point précis transmis sur RVIZ. Il envoie également un message dans le topic /detection lorsqu'il détecte une bouteille rouge ou noire.
+Installation
+
+    Installer ROS2 en suivant les instructions de cette page : https://docs.ros.org/en/foxy/Tutorials/Beginner-CLI-Tools/Configuring-ROS2-Environment.html. Nous utiliserons la version Foxy de ROS2.
+
+    Télécharger ce package dans le dossier ros2_ws
+
+    Compiler le package en exécutant la commande colcon build
+
+    Sourcer le package en exécutant la commande source install/setup.bash
+
+    Lancer les launchfiles en utilisant la commande ros2 launch <package> <launchfile>
+
+Packages contenus :
+
+    tuto_move : Tutoriel lié aux mouvements
+    tuto_sim : Tutoriel lié à la simulation
+    tuto_visio : Tutoriel lié à la vision
+    grp_vincent : Lié aux challenges
+
+Informations de configuration
+
+N'oubliez pas de configurer votre fichier bashrc si vous travaillez sur différents ordinateurs. Il est important de définir la variable NETWORK_ID à 42.
+Calibration
+
+Avant de lancer le package, il peut être utile de calibrer la détection en particulier pour les bouteilles orange. Pour cela, vous pouvez exécuter le fichier calibrer.py. Deux fenêtres s'ouvriront alors : une pour le retour vidéo et une pour le masque.
+
+
+
 Repository projet LARM
 
 Ce projet contient les différents packages liés à l'UV LARM.
@@ -143,8 +175,25 @@ Puis on utilise la fonction regionprops de la bibliotheque skimage.measure. Avec
 
 ### Filtre de Canny et Template Matching
 Pour la bouteille noire, on appliaue un filtre de Canny, qui fait ressortir les contours.
-Puis grace au Template Matching, on essyaye de retrouver l'etiquette, partie caracteristiaue de la bouteille.
+Puis grace au Template Matching, on essaye de retrouver l'etiquette, partie caracteristique de la bouteille.
 
+# Arborescence :
+
+*Fichiers executables*
+
+calibrer.py
+/grp_vincent/grp_vincent/
+                        move.py
+                        objects.py
+                        scan_echo.py
+            /launch/_pycache/
+                            simulation.launch.py
+                            tbot.launch.py
+                            visualize.launch.py
+
+## Description des fichiers
+                        
+      
 
 # Commandes interressantes
 
