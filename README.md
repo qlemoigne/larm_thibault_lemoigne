@@ -44,18 +44,6 @@ Ce package contient les nodes suivantes en plus de celles de base :
 - move : Gére le mouvement
 - objects : Détection des objets
 
-
-## Principe de la dététection des objects
-
-Pour les bouteilles oranges :
-
-TODO A compléter
-
-Pour les bouteilles orange :
-
-TODO A compléter
-On utilise un template.
-
 ## PC embarqué vincent :
 
 Lancer Robot (Driver + Laser + Camera + Move + Détection + Mapper):
@@ -64,7 +52,7 @@ Lancer Robot (Driver + Laser + Camera + Move + Détection + Mapper):
 ros2 launch grp_vincent tbot.launch.py
 ```
 
-## PC controleur robnet 9visuaisation :
+## PC controleur robnet - visualisation :
 
 ```
 ros2 launch grp_vincent visiualize.launch.py
@@ -105,41 +93,46 @@ ros2 launch grp_vincent visiualize.launch.py
 ros2 launch grp_vincent simulation.launch.py
 ```
 
-# Challenge 2 : 
+# Challenge 2 : Traitement d'image de la Kinect embarquée
 
-### Callibration :
-Clique gauche : ajouter le point au filtre
-Cliaue droit terminer le programme et exporter le tableau de seuil HSV.
+Le challenge 2 de notre projet consiste à utiliser la Kinect embarquée sur notre robot pour détecter les bouteilles rouges et noires dans l'environnement. Pour ce faire, nous avons écrit un script Python qui utilise les bibliothèques `OpenCV` et `Pyrealsense2` pour traiter les images capturées par la Kinect.
+### Prérequis
 
+    > Avoir installé la bibliothèque Pyrealsense2
+    >
+    > Avoir installé OpenCV pour Python
+
+### Utilisation
+
+Pour utiliser ce script, il suffit de lancer la commande suivante :
 ```
-./calibrer.py
+ros2 run <nom_du_package> objects_detector.py
 ```
+Ce script s'abonne aux topics de la Kinect pour récupérer les images de la caméra et de la profondeur. Il utilise ensuite divers filtres et techniques de traitement d'image pour détecter les bouteilles rouges et noires dans l'environnement. Il publie ensuite les résultats de ces détections sur un topic spécifique.
 
+Il est important de noter que le script utilise des filtres de couleur prédéfinis pour détecter les bouteilles rouges et noires, et qu'il est possible de les calibrer en modifiant les variables staticLow et staticHigh pour les bouteilles rouges, et les variables orangeLow et orangeHigh pour les bouteilles oranges dans le script. Il est également possible de changer les paramètres de détection de bouteilles noires en modifiant le fichier de template utilisé et les paramètres de filtre de contours.
 
-### Segmentation d'image couleur
-On fait passe le flux camera dans un filtre HSV, qui est la somme de masques plus petits obtenues a la calibration. On retourne une image binarise.
+Il est important de noter que le script utilise également une méthode de détection basée sur un template pour détecter les bouteilles noires, ce qui peut entraîner des erreurs dans les résultats si les bouteilles noires dans l'environnement ont des dimensions ou des orientations différentes de celles utilisées pour créer le template.
 
-### Segmentation d'image forme
-On traite l'image avant de detecter des formes. Pour cela on utilise, de l'erosion et de la dilatation.
-Puis on utilise la fonction regionprops de la bibliotheque skimage.measure. Avec des criteres de ratio, de perimetre et  de verticalite et de remplissage pour selectionner les box.
+Enfin, il est important de noter que le script utilise une méthode de détection basée sur la profondeur pour détecter les bouteilles rouges, qui peut entraîner des erreurs dans les résultats si les bouteilles rouges dans l'environnement ont des couleurs similaires à celles utilisées pour créer les filtres de couleur.
 
-### Filtre de Canny et Template Matching
-Pour la bouteille noire, on appliaue un filtre de Canny, qui fait ressortir les contours.
-Puis grace au Template Matching, on essaye de retrouver l'etiquette, partie caracteristique de la bouteille.
+### Résultats
+
+Les résultats de la détection des bouteilles rouges et noires sont publiés sur le topic `/detection`
 
 # Arborescence :
 
 *Fichiers executables*
 
 calibrer.py
-/grp_vincent/grp_vincent/
-                        move.py
-                        objects.py
-                        scan_echo.py
-            /launch/_pycache/
-                            simulation.launch.py
-                            tbot.launch.py
-                            visualize.launch.py
+> /grp_vincent/grp_vincent/
+>                          move.py
+>                          objects.py
+>                          scan_echo.py
+>             /launch/_pycache/
+>                              simulation.launch.py
+>                              tbot.launch.py
+>                              visualize.launch.py
 
 ## Description des fichiers
                         
@@ -149,23 +142,23 @@ calibrer.py
 
 Les commandes suivantes sont utiles pour lancer les différents composants de notre projet :
 
-*Base uniquement*
+**Base uniquement**
 ```
 ros2 launch tbot_start base.launch.py
 ```
-*Base + laser*
+**Base + laser**
 ```
 ros2 launch tbot_start minimal.launch.py
 ```
-*Base + laser + camera*
+**Base + laser + camera**
 ```
 ros2 launch tbot_start full.launch.py
 ```
-*Visualisation des frames*
+**Visualisation des frames**
 ```
 ros2 run tf2_tools view_frames.py
 ```
-*Visualisation avec RVIZ2*
+**Visualisation avec RVIZ2**
 ```
 rviz2
 ```
