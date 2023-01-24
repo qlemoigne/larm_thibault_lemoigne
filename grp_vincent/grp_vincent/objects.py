@@ -25,51 +25,41 @@ class ObjectsDetector(Node):
     def __init__(self):
         super().__init__('objects_detector')
 
+        # Filtres du mask initial de la bouteille orange (vide)
         self.staticLow = np.array([0,0,0]) # Slightly darker and dimmer orange
         self.staticHigh = np.array([0,0,0]) # Slighty lighter and brighter orange 
 
 
-        # Creation topic sensor_msgs/image
-
+        # Ecoutes des topics liés à la caméra
         self.create_subscription(Image, '/img', self.onImage, 10)
         
         # La profondeur n'est pas utilisé pour le moment
         #self.create_subscription(Image, '/depth', self.onDepth, 10)
 
+        # Création topic émission
         self.object_publisher = self.create_publisher(String, '/detection', 10)
         
 
-        # Noyau
+        # Noyau pour le nettoyage des masques (Bouteille Orange)
         self.kernel2 = np.ones((2, 2), np.uint8)
         self.kernel3 = np.ones((3, 3), np.uint8)
         self.kernel4 = np.ones((4, 4), np.uint8)
         self.kernel6 = np.ones((6, 6), np.uint8)
 
 
-        ####### CRITERES DE CALIBRATION
-
-        # Orange
-        #self.orangeFilters = [np.array([13,198,209]),np.array([11,237,194]),np.array([13,147,254]),np.array([12,229,249]),np.array([19,136,254]),]
-        #self.orangeLow = np.array([5,33,53])
-        #self.orangeHigh = np.array([5,32,53])
-
-        #self.orangeFilters = [np.array([15,244,252]),np.array([10,255,246]),np.array([18,209,255]),np.array([24,252,254]),]
-        #self.orangeLow = np.array([4,35,60])
-        #self.orangeHigh = np.array([4,35,60])
- 
+        # Critères de calibration (Bouteille orange)
         self.orangeFilters = [np.array([8,166,234]),np.array([12,153,251]),np.array([12,223,209]),np.array([7,152,188]),np.array([14,178,196]),]
         self.orangeLow = np.array([3,31,42])
         self.orangeHigh = np.array([3,31,42])
 
 
-        # Template bouteilles noir
-        self.template = cv2.imread("teilleAdetourer-removebg-preview.png")
+        # Chargement / resize du template (Bouteille noire)
+        self.template = cv2.imread("bouteille-noire.png")
         scale_percent = 30 # percent of original size
         width = int(self.template.shape[1] * scale_percent / 100)
         height = int(self.template.shape[0] * scale_percent / 100)
         dim = (width, height)
 
-        # resize image template
         self.template = cv2.resize(self.template, dim, interpolation = cv2.INTER_AREA)
         self.template = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
         self.template = cv2.Canny(self.template, 50, 200)
