@@ -1,98 +1,50 @@
-# larm_thibault_lemoigne
-Repository projet LARM
+# **larm_thibault_lemoigne**
 
-Ce projet contient les différents packages liés à l'UV LARM.
+## Introduction
 
-Développé par :
-- Emile Thibault
-- Quentin Lemoigne
+Ce repository contient les différents packages liés à l'UV LARM développé par Emile Thibault et Quentin Lemoigne. Il permet de créer une carte de l'environnement à travers un robot qui est capable d'aller à un point précis transmis sur RVIZ. Il envoie également un message dans le topic /detection lorsqu'il détecte une bouteille rouge ou noire.
 
-# Installation 
+## Presentation
 
-Installer ROS2 : 
-'''
-https://docs.ros.org/en/foxy/Tutorials/Beginner-CLI-Tools/Configuring-ROS2-Environment.html
-'''
-Nous utiliserons la version Foxy de ROS2
+Ce projet est un système de navigation autonome pour un robot utilisant ROS2 (Robot Operating System). Il utilise les données de capteurs de profondeur et de caméra pour créer une carte de l'environnement et permettre au robot de se déplacer vers un point spécifié via RVIZ. Le package contient également des fonctionnalités de détection d'objets, telles que la détection de bouteilles rouges et noires, qui envoient des messages dans le topic /detection lorsqu'elles sont détectées. Les nodes clés de ce package incluent scan_echo, qui nettoie et transmet les données du laser, move, qui gère les commandes de mouvement et objects, qui effectue la détection des objets.
 
-Pour utiliser ce package, il suffit de le telecharger dans le dossier ros2_ws
+*Pour lancer le projet, il est important d'utiliser les fichiers launch suivants.*
 
-Pour compiler, il suffit de lancer :
-```
-colcon build
-```
-et de sourcer :
-```
-source install/setup.bash
-```
-Enfin de lancer les launchfiles : 
-```
-ros2 launch <packages> <launchfile>
-```
+    base.launch.py : lance les nodes de base uniquement
+    minimal.launch.py : lance les nodes de base avec le laser
+    full.launch.py : lance les nodes de base, le laser et la caméra
+    calibrer.py : utilisé pour calibrer les filtres couleur pour la détection des objets
+    rviz2 : utilisé pour visualiser les informations transmises par les différents topics.
 
-**Packages contenus :**
-- tuto_move : Tutoriel lié au mouvements
-- tuto_sim : Tutoriel lié à la simulation
-- tuto_visio : Tutoriel lié à la vision
-- grp_vincent : Lié aux challenges
 
-# Informations de configuration
-N'oubliez pas de modifier votre bashrc si vous travaillez sur differents ordis
-NETWORK_ID : 42
+## Installation
 
-## Résumé
+    Installer ROS2 en suivant les instructions de cette page : https://docs.ros.org/en/foxy/Tutorials/Beginner-CLI-Tools/Configuring-ROS2-Environment.html. Nous utiliserons la version Foxy de ROS2.
 
-Le robot trace une carte de son environnement et est capable d'aller à un point précis transmis sur RVIZ.
+    Télécharger ce package dans le dossier ros2_ws
 
-Il envoit aussi un message dans le topic /detection lorsqu'il detecte une bouteille rouge ou noire.
+    Compiler le package en exécutant la commande colcon build
 
-Ce package contient les nodes suivantes en plus de celles de base :
-- scan_echo : Nettoie et transmet les données du laser sur un topic
-- move : Gére le mouvement
-- objects : Détection des objets
+    Sourcer le package en exécutant la commande source install/setup.bash
+
+    Lancer les launchfiles en utilisant la commande ros2.  launch <package> <launchfile>
+
+## Packages contenus :
+
+    tuto_move : Tutoriel lié aux mouvements
+    tuto_sim : Tutoriel lié à la simulation
+    tuto_visio : Tutoriel lié à la vision
+    grp_vincent : Lié aux challenges
+
+## Informations de configuration
+
+N'oubliez pas de configurer votre fichier bashrc si vous travaillez sur différents ordinateurs. Il est important de définir une variable **NETWORK_ID** identique sur tous les ordis travaillant sur le projet, dans notre cas **42**.
 
 ## Calibration
 
-Avant de lancer, il peut être utile de calibrer la détection en particulier pour les bouteilles orange.
+Avant de lancer le package, il peut être utile de calibrer la détection en particulier pour les bouteilles orange. Pour cela, vous pouvez exécuter le fichier calibrer.py. Deux fenêtres s'ouvriront alors : une pour le retour vidéo et une pour le masque.
 
-Pour on peut lancer le fichier ```calibrer.py```
-
-Deux fenêtre s'ouvrent alors :
-- Retour vidéo
-- Masque
-
-TODO A compléter
-
-## Principe de la dététection des objects
-
-Pour les bouteilles oranges :
-
-TODO A compléter
-
-Pour les bouteilles orange :
-
-TODO A compléter
-On utilise un template.
-
-## PC embarqué vincent :
-
-Lancer Robot (Driver + Laser + Camera + Move + Détection + Mapper):
-
-```
-ros2 launch grp_vincent tbot.launch.py
-```
-
-## PC controleur robnet :
-
-```
-ros2 launch grp_vincent visiualize.launch.py
-```
-
-## Simulation :
-
-```
-ros2 launch grp_vincent simulation.launch.py
-```
+---
 
 # Challenge 1 :
 
@@ -105,16 +57,16 @@ Ce package contient les nodes suivantes en plus de celles de base :
 
 ## PC embarqué vincent :
 
-Lancer Robot (Driver + Laser + Camera + Move):
+Lancer Robot (Driver + Laser + Camera + Move + Détection + Mapper):
 
 ```
 ros2 launch grp_vincent tbot.launch.py
 ```
 
-## PC controleur robnet :
+## PC controleur robnet - visualisation :
 
 ```
-ros2 launch grp_vincent visiualize.launch.py
+ros2 launch grp_vincent visualize.launch.py
 ```
 
 ## Simulation :
@@ -123,48 +75,60 @@ ros2 launch grp_vincent visiualize.launch.py
 ros2 launch grp_vincent simulation.launch.py
 ```
 
-# Challenge 2 : 
+---
 
-### Callibration :
-Clique gauche : ajouter le point au filtre
-Cliaue droit terminer le programme et exporter le tableau de seuil HSV.
+# Challenge 2 : Traitement d'image de la Kinect embarquée
 
+Le challenge 2 de notre projet consiste à utiliser la Kinect embarquée sur notre robot pour détecter les bouteilles rouges et noires dans l'environnement. Pour ce faire, nous avons écrit un script Python qui utilise les bibliothèques `OpenCV` et `Pyrealsense2` pour traiter les images capturées par la Kinect.
+
+### Prérequis
+
+* Avoir installé la bibliothèque Pyrealsense2
+
+* Avoir installé OpenCV pour Python
+
+### Utilisation
+
+Pour utiliser ce script, il suffit de lancer la commande suivante :
 ```
-./calibrer.py
+ros2 run <nom_du_package> objects_detector.py
 ```
+Ce script s'abonne aux topics de la Kinect pour récupérer les images de la caméra et de la profondeur. Il utilise ensuite divers filtres et techniques de traitement d'image pour détecter les bouteilles rouges et noires dans l'environnement. Il publie ensuite les résultats de ces détections sur un topic spécifique.
 
+Il est important de noter que le script utilise des filtres de couleur prédéfinis pour détecter les bouteilles rouges et noires, et qu'il est possible de les calibrer en modifiant les variables staticLow et staticHigh pour les bouteilles rouges, et les variables orangeLow et orangeHigh pour les bouteilles oranges dans le script. Il est également possible de changer les paramètres de détection de bouteilles noires en modifiant le fichier de template utilisé et les paramètres de filtre de contours.
 
-### Segmentation d'image couleur
-On fait passe le flux camera dans un filtre HSV, qui est la somme de masques plus petits obtenues a la calibration. On retourne une image binarise.
+Il est important de noter que le script utilise également une méthode de détection basée sur un template pour détecter les bouteilles noires, ce qui peut entraîner des erreurs dans les résultats si les bouteilles noires dans l'environnement ont des dimensions ou des orientations différentes de celles utilisées pour créer le template.
 
-### Segmentation d'image forme
-On traite l'image avant de detecter des formes. Pour cela on utilise, de l'erosion et de la dilatation.
-Puis on utilise la fonction regionprops de la bibliotheque skimage.measure. Avec des criteres de ratio, de perimetre et  de verticalite et de remplissage pour selectionner les box.
+Enfin, il est important de noter que le script utilise une méthode de détection basée sur la profondeur pour détecter les bouteilles rouges, qui peut entraîner des erreurs dans les résultats si les bouteilles rouges dans l'environnement ont des couleurs similaires à celles utilisées pour créer les filtres de couleur.
 
-### Filtre de Canny et Template Matching
-Pour la bouteille noire, on appliaue un filtre de Canny, qui fait ressortir les contours.
-Puis grace au Template Matching, on essyaye de retrouver l'etiquette, partie caracteristiaue de la bouteille.
+### Résultats
 
+Les résultats de la détection des bouteilles rouges et noires sont publiés sur le topic `/detection`
 
-# Commandes interressantes
+    
 
-## base only
-```ros2 launch tbot_start base.launch.py```
+# Commandes utiles
 
-## base + laser
-```ros2 launch tbot_start minimal.launch.py```
+Les commandes suivantes sont utiles pour lancer les différents composants de notre projet :
 
-## base + with laser + camera
-```ros2 launch tbot_start full.launch.py```
-
-
-## Voir le graphique des frame
+**Base uniquement**
+```
+ros2 launch tbot_start base.launch.py
+```
+**Base + laser**
+```
+ros2 launch tbot_start minimal.launch.py
+```
+**Base + laser + camera**
+```
+ros2 launch tbot_start full.launch.py
+```
+**Visualisation des frames**
 ```
 ros2 run tf2_tools view_frames.py
 ```
-
-## RVIZ2 - Visualisation
-
+**Visualisation avec RVIZ2**
 ```
 rviz2
 ```
+Ces commandes permettent de lancer les différents composants de notre projet, de visualiser les frames de notre système et de visualiser les données de capteur à l'aide de RVIZ2. Il est important de noter que vous devrez peut-être ajuster les chemins et les noms de fichiers de lancement en fonction de votre configuration.
