@@ -75,6 +75,9 @@ class ObjectsDetector(Node):
         self.lastBlackDetectionCount = 0
 
 
+    '''
+    Reception messages liés à la profondeur
+    '''
     def onDepth(self, data: Image):
         bridge = CvBridge()
 
@@ -83,7 +86,7 @@ class ObjectsDetector(Node):
         
             cv_depth = cv2.cvtColor(cv_depth_base, cv2.COLOR_BGR2GRAY)
             
-            # analyse profondeur ici
+            # Analyse profondeur à faire ici
             
 
         except CvBridgeError as e:
@@ -92,7 +95,7 @@ class ObjectsDetector(Node):
 
 
     '''
-    Traitement image reçue
+    Reception messages liés à l'image RGB
     '''
     def onImage(self, data: Image):
         bridge = CvBridge()
@@ -105,16 +108,19 @@ class ObjectsDetector(Node):
             image_hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
             self.image_hsv = image_hsv
 
+            # Traitement pour les bouteilles orange
+
             image_hsv = cv2.erode(image_hsv, self.kernel3, iterations=2)
 
-            # Détection ORANGE
+            
+            # Application des mask
             mask = cv2.inRange(image_hsv, self.staticLow, self.staticHigh)
 
             for filter in self.orangeFilters:
                 temp_mask = cv2.inRange(image_hsv, filter - self.orangeLow, filter + self.orangeHigh)
                 mask = cv2.add(mask, temp_mask)
             
-            # Mask contient tout ce qui a été filtré en orange
+            # Nettoyage des residus présent dans le mask final
 
             mask = cv2.erode(mask, kernel=self.kernel2, iterations=4)
             mask = cv2.dilate(mask, kernel=self.kernel4, iterations=5)
@@ -122,14 +128,12 @@ class ObjectsDetector(Node):
             mask = cv2.erode(mask, kernel=self.kernel6, iterations=2)
             mask = cv2.dilate(mask, kernel=self.kernel4, iterations=2)
 
-            cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+            # Recherche des regions
+
             label_image = label(mask)
             regions = regionprops(label_image)
 
             for props in regions:
-                y0, x0 = props.centroid
-                orientation = props.orientation
-
                 minr, minc, maxr, maxc = props.bbox
 
                 rsize = maxr - minr
@@ -143,22 +147,22 @@ class ObjectsDetector(Node):
                 if props.extent > 0.85 or props.extent < 0.35:
                     continue
 
-
                 # test horizontal
 
                 if ratio <= 0.5 and ratio >= 0.3:
                     perimetre = 2 * rsize + 2 * csize
 
+                    # test perimetre
                     if perimetre > 1000 or perimetre < 90:
                         continue
 
-
                     cv2.rectangle(cv_image, (int(minc), int(minr)), (int(maxc) ,int(maxr)), (255, 0, 0), 2)
                     
+                    # vérification nombre détections
                     if self.lastDetection + 2 < time.time():
                         self.lastDetectionCount += 1
 
-                        # minimum 3 détection dans la même seconde
+                        # minimum 3 détection dans les 3s
                         if self.lastDetectionCount > 3:
                             data = String()
                             data.data = "Bouteille orange"
@@ -169,18 +173,17 @@ class ObjectsDetector(Node):
                         self.lastDetection = time.time()
 
             
-            # Détéction NOIR
+            # Traitement bouteilles noires
 
             gray_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
             red_image = cv_image[:,:,2]
        
             edged = cv2.Canny(gray_image, 50, 100)
     
-
-    
             result = cv2.matchTemplate(edged, self.template, cv2.TM_CCORR_NORMED)
             (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result)
 
+            # seul de correspondance (arbitraire)
             if maxVal > 0.19:
                 cv2.rectangle(cv_image, (maxLoc[0], maxLoc[1]), (maxLoc[0] + self.tW, maxLoc[1] + self.tH), (0, 255, 0), 2)
 
@@ -188,11 +191,12 @@ class ObjectsDetector(Node):
 
                 count = np.sum(red_image >= 100) -  np.sum(red_image <= 160)
 
+                # verification du nombre de pixel rouge dans la zone (étiquettes)
                 if count > 100:
                     if self.lastBlackDetection + 2 < time.time():
                         self.lastBlackDetectionCount += 1
 
-                        # minimum 3 détection dans la même seconde
+                        # minimum 3 détection dans les 3s
                         if self.lastBlackDetectionCount > 3:
                             data = String()
                             data.data = "Bouteille noire : " + str(count)
@@ -202,6 +206,7 @@ class ObjectsDetector(Node):
                         self.lastBlackDetectionCount = 0
                         self.lastBlackDetection = time.time()
 
+            cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
             cv2.imshow('RealSense', cv_image)
             cv2.imshow('mask', mask)
             cv2.waitKey(1)
@@ -215,16 +220,12 @@ class ObjectsDetector(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-
-
     objectsDetector = ObjectsDetector()
     
-        
     rclpy.spin(objectsDetector)
 
     objectsDetector.pipeline.stop()
         
-
     objectsDetector.destroy_node()
     rclpy.shutdown()
 
