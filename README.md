@@ -1,4 +1,4 @@
-# larm_thibault_lemoigne
+# *larm_thibault_lemoigne*
 
 ## Introduction
 
@@ -8,7 +8,7 @@ Ce repository contient les différents packages liés à l'UV LARM développé p
 
 Ce projet est un système de navigation autonome pour un robot utilisant ROS2 (Robot Operating System). Il utilise les données de capteurs de profondeur et de caméra pour créer une carte de l'environnement et permettre au robot de se déplacer vers un point spécifié via RVIZ. Le package contient également des fonctionnalités de détection d'objets, telles que la détection de bouteilles rouges et noires, qui envoient des messages dans le topic /detection lorsqu'elles sont détectées. Les nodes clés de ce package incluent scan_echo, qui nettoie et transmet les données du laser, move, qui gère les commandes de mouvement et objects, qui effectue la détection des objets.
 
-Pour lancer le projet, il est important d'utiliser les fichiers launch suivants :
+*Pour lancer le projet, il est important d'utiliser les fichiers launch suivants *:
 
     base.launch.py : lance les nodes de base uniquement
     minimal.launch.py : lance les nodes de base avec le laser
@@ -27,7 +27,7 @@ Pour lancer le projet, il est important d'utiliser les fichiers launch suivants 
 
     Sourcer le package en exécutant la commande source install/setup.bash
 
-    Lancer les launchfiles en utilisant la commande ros2 launch <package> <launchfile>
+    Lancer les launchfiles en utilisant la commande ros2.  launch <package> <launchfile>
 
 ## Packages contenus :
 
@@ -38,11 +38,13 @@ Pour lancer le projet, il est important d'utiliser les fichiers launch suivants 
 
 ## Informations de configuration
 
-N'oubliez pas de configurer votre fichier bashrc si vous travaillez sur différents ordinateurs. Il est important de définir la variable NETWORK_ID à 42.
+N'oubliez pas de configurer votre fichier bashrc si vous travaillez sur différents ordinateurs. Il est important de définir une variable **NETWORK_ID** identique sur tous les ordis travaillant sur le projet, dans notre cas **42**.
 
 ## Calibration
 
 Avant de lancer le package, il peut être utile de calibrer la détection en particulier pour les bouteilles orange. Pour cela, vous pouvez exécuter le fichier calibrer.py. Deux fenêtres s'ouvriront alors : une pour le retour vidéo et une pour le masque.
+
+---
 
 # Challenge 1 :
 
@@ -73,15 +75,17 @@ ros2 launch grp_vincent visualize.launch.py
 ros2 launch grp_vincent simulation.launch.py
 ```
 
+---
+
 # Challenge 2 : Traitement d'image de la Kinect embarquée
 
 Le challenge 2 de notre projet consiste à utiliser la Kinect embarquée sur notre robot pour détecter les bouteilles rouges et noires dans l'environnement. Pour ce faire, nous avons écrit un script Python qui utilise les bibliothèques `OpenCV` et `Pyrealsense2` pour traiter les images capturées par la Kinect.
 
 ### Prérequis
 
-    > Avoir installé la bibliothèque Pyrealsense2
-    >
-    > Avoir installé OpenCV pour Python
+* Avoir installé la bibliothèque Pyrealsense2
+
+* Avoir installé OpenCV pour Python
 
 ### Utilisation
 
