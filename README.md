@@ -40,6 +40,60 @@ ros2 launch <packages> <launchfile>
 N'oubliez pas de modifier votre bashrc si vous travaillez sur differents ordis
 NETWORK_ID : 42
 
+## Résumé
+
+Le robot trace une carte de son environnement et est capable d'aller à un point précis transmis sur RVIZ.
+
+Il envoit aussi un message dans le topic /detection lorsqu'il detecte une bouteille rouge ou noire.
+
+Ce package contient les nodes suivantes en plus de celles de base :
+- scan_echo : Nettoie et transmet les données du laser sur un topic
+- move : Gére le mouvement
+- objects : Détection des objets
+
+## Calibration
+
+Avant de lancer, il peut être utile de calibrer la détection en particulier pour les bouteilles orange.
+
+Pour on peut lancer le fichier ```calibrer.py```
+
+Deux fenêtre s'ouvrent alors :
+- Retour vidéo
+- Masque
+
+TODO A compléter
+
+## Principe de la dététection des objects
+
+Pour les bouteilles oranges :
+
+TODO A compléter
+
+Pour les bouteilles orange :
+
+TODO A compléter
+On utilise un template.
+
+## PC embarqué vincent :
+
+Lancer Robot (Driver + Laser + Camera + Move + Détection + Mapper):
+
+```
+ros2 launch grp_vincent tbot.launch.py
+```
+
+## PC controleur robnet :
+
+```
+ros2 launch grp_vincent visiualize.launch.py
+```
+
+## Simulation :
+
+```
+ros2 launch grp_vincent simulation.launch.py
+```
+
 # Challenge 1 :
 
 ## Résumé
@@ -68,6 +122,29 @@ ros2 launch grp_vincent visiualize.launch.py
 ```
 ros2 launch grp_vincent simulation.launch.py
 ```
+
+# Challenge 2 : 
+
+### Callibration :
+Clique gauche : ajouter le point au filtre
+Cliaue droit terminer le programme et exporter le tableau de seuil HSV.
+
+```
+./calibrer.py
+```
+
+
+### Segmentation d'image couleur
+On fait passe le flux camera dans un filtre HSV, qui est la somme de masques plus petits obtenues a la calibration. On retourne une image binarise.
+
+### Segmentation d'image forme
+On traite l'image avant de detecter des formes. Pour cela on utilise, de l'erosion et de la dilatation.
+Puis on utilise la fonction regionprops de la bibliotheque skimage.measure. Avec des criteres de ratio, de perimetre et  de verticalite et de remplissage pour selectionner les box.
+
+### Filtre de Canny et Template Matching
+Pour la bouteille noire, on appliaue un filtre de Canny, qui fait ressortir les contours.
+Puis grace au Template Matching, on essyaye de retrouver l'etiquette, partie caracteristiaue de la bouteille.
+
 
 # Commandes interressantes
 
