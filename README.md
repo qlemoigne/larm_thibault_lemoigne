@@ -1,4 +1,4 @@
-# *larm_thibault_lemoigne*
+# **larm_thibault_lemoigne**
 
 ## Introduction
 
