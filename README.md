@@ -8,7 +8,7 @@ Ce repository contient les différents packages liés à l'UV LARM développé p
 
 Ce projet est un système de navigation autonome pour un robot utilisant ROS2 (Robot Operating System). Il utilise les données de capteurs de profondeur et de caméra pour créer une carte de l'environnement et permettre au robot de se déplacer vers un point spécifié via RVIZ. Le package contient également des fonctionnalités de détection d'objets, telles que la détection de bouteilles rouges et noires, qui envoient des messages dans le topic /detection lorsqu'elles sont détectées. Les nodes clés de ce package incluent scan_echo, qui nettoie et transmet les données du laser, move, qui gère les commandes de mouvement et objects, qui effectue la détection des objets.
 
-*Pour lancer le projet, il est important d'utiliser les fichiers launch suivants *:
+*Pour lancer le projet, il est important d'utiliser les fichiers launch suivants.*
 
     base.launch.py : lance les nodes de base uniquement
     minimal.launch.py : lance les nodes de base avec le laser
