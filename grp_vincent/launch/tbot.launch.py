@@ -33,12 +33,13 @@ def generate_launch_description():
             PythonLaunchDescriptionSource([launch_file_dir, '/full.launch.py'])
             ),
 
-        Node(package='grp_vincent', namespace='', executable='objects'),
+        
 
         Node(package='grp_vincent', namespace='', executable='scan_echo'),
 
-        Node(package='grp_vincent', namespace='', executable='move'),
+        #Node(package='grp_vincent', namespace='', executable='move'),
 
+        Node(package='grp_vincent', namespace='', executable='objects'),
 
          # PATH FINDING
          
@@ -46,7 +47,7 @@ def generate_launch_description():
             PythonLaunchDescriptionSource([launch_file_dir2, '/online_async_launch.py']),
             launch_arguments={'use_sim_time': 'False'}.items()
             )
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([launch_file_dir3, '/navigation_launch.py']))
+        #IncludeLaunchDescription(
+        #    PythonLaunchDescriptionSource([launch_file_dir3, '/navigation_launch.py']))
     
     ])
