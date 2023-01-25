@@ -30,7 +30,7 @@ def generate_launch_description():
     
         
         IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([launch_file_dir, '/full.launch.py'])
+            PythonLaunchDescriptionSource([launch_file_dir, '/minimal.launch.py'])
             ),
 
         
