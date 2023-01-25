@@ -37,7 +37,7 @@ def generate_launch_description():
 
         Node(package='grp_vincent', namespace='', executable='scan_echo'),
 
-        #Node(package='grp_vincent', namespace='', executable='move'),
+        Node(package='grp_vincent', namespace='', executable='move'),
 
         #Node(package='grp_vincent', namespace='', executable='objects'),
 

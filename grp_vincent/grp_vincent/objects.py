@@ -8,6 +8,9 @@ import time, numpy as np
 import sys, cv2
 
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import Pose
+from geometry_msgs.msg import PoseStamped
+from visualization_msgs.msg import Marker
 from std_msgs.msg import String
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
@@ -34,11 +37,19 @@ class ObjectsDetector(Node):
         self.create_subscription(Image, '/img', self.onImage, 10)
         
         # La profondeur n'est pas utilisé pour le moment
-        #self.create_subscription(Image, '/depth', self.onDepth, 10)
+        self.create_subscription(Image, '/depth', self.onDepth, 10)
 
         # Création topic émission
         self.object_publisher = self.create_publisher(String, '/detection', 10)
         
+        # COnfig camera
+        self.camera_width = 484.0
+        self.camera_height = 480.0
+        self.hfov = 69
+
+        # Historique de detection
+        self.bottlesPoses = []
+        self.markerPublisher = self.create_publisher(Marker, '/bottle', 10)
 
         # Noyau pour le nettoyage des masques (Bouteille Orange)
         self.kernel2 = np.ones((2, 2), np.uint8)
@@ -74,6 +85,22 @@ class ObjectsDetector(Node):
         self.lastBlackDetection = 0
         self.lastBlackDetectionCount = 0
 
+    '''
+    Retourne la pose estimée
+    '''
+    def estimatePose(self, x, y, w, h):
+
+        distance = 2000
+        for row in self.depth_array[y:y+h, x:x+w]:
+            for pixel in row:
+                print(pixel)
+                if pixel < distance and pixel != 0:
+                    distance = pixel  # ros distance with realsense camera
+        angle = ((x+w - self.camera_width/2)/(self.camera_width/2))*(self.hfov/2) * math.pi / 180
+        estimated_pose = Pose()
+        estimated_pose.position.x = distance / 1000 * math.cos(angle) # equals distance * cos(angle from middle of camera)
+        estimated_pose.position.y = distance / 1000 * math.sin(angle)  # equals distance * sin(angle from middle of camera)
+        return estimated_pose
 
     '''
     Reception messages liés à la profondeur
@@ -84,8 +111,12 @@ class ObjectsDetector(Node):
         try:
             cv_depth_base = bridge.imgmsg_to_cv2(data, desired_encoding="passthrough")
         
-            cv_depth = cv2.cvtColor(cv_depth_base, cv2.COLOR_BGR2GRAY)
+            #cv_depth_base = cv2.cvtColor(cv_depth_base, cv2.COLOR_BGR2GRAY)
             
+
+            cv2.imshow('cv_depth_base', cv_depth_base)
+
+            #self.depth_array = np.array(cv_depth_base, dtype=np.float32)
             # Analyse profondeur à faire ici
             
 
@@ -93,6 +124,60 @@ class ObjectsDetector(Node):
             print("CvBridge Error: {0}".format(e))
 
 
+    '''
+    Traitement d'une bouteille et publication sur topic markers
+    '''
+    def handleBottle(self, pose, type):
+
+        if self.depth_array:
+            print("error not depth found")
+            return
+
+        conflict = False
+
+        for existing in self.bottlesPoses:
+            if self.areNear(existing, pose):
+                conflict = True
+                break
+
+        if conflict == False:
+
+            self.bottlesPoses.append(pose)
+
+            data = String()
+            data.data = "Bouteille détectée !! " + type
+            self.object_publisher.publish(data)
+            
+            pose_stamped = PoseStamped()
+            pose_stamped.pose = pose
+            pose_stamped.header.frame_id = "map"
+            pose_stamped = self.tfListener.transformPose(
+                "map", pose_stamped)
+            marker = Marker()
+            marker.header.frame_id = "camera_link"
+            marker.id = len(self.markers_list)
+            print("MARKER ID : " + str(marker.id))
+            marker.type = Marker.CUBE
+            marker.action = Marker.ADD
+            marker.pose = pose_stamped.pose
+            marker.scale.x = 0.1
+            marker.scale.y = 0.1
+            marker.scale.z = 0.1
+            marker.color.a = 1.0
+            marker.color.r = 0.0
+            marker.color.g = 1.0
+            marker.color.b = 0.0
+
+            self.markerPublisher.publish(marker)
+
+    def areNear(self, existing_marker: Pose, new_marker: Pose):
+        a = np.array((existing_marker.position.x, existing_marker.position.y))
+        b = np.array((new_marker.position.x, new_marker.position.y))
+        dist = np.linalg.norm(a-b)
+
+        print("distance : " + str(dist))
+        #print("!!!! DISTANCE : " + str(dist) + " are in same area : " + str(dist<10))
+        return dist > 5
 
     '''
     Reception messages liés à l'image RGB
@@ -164,9 +249,8 @@ class ObjectsDetector(Node):
 
                         # minimum 3 détection dans les 3s
                         if self.lastDetectionCount > 3:
-                            data = String()
-                            data.data = "Bouteille orange"
-                            self.object_publisher.publish(data)
+                            self.handleBottle(self.estimatePose(minc,minr, maxc - minc, maxr - minr), 'orange')
+
 
                     else:
                         self.lastDetectionCount = 0
@@ -198,9 +282,10 @@ class ObjectsDetector(Node):
 
                         # minimum 3 détection dans les 3s
                         if self.lastBlackDetectionCount > 3:
-                            data = String()
-                            data.data = "Bouteille noire : " + str(count)
-                            self.object_publisher.publish(data)
+                            self.handleBottle(self.estimatePose(maxLoc[0], maxLoc[1], self.tW, self.tH), 'black')
+                            #data = String()
+                            #data.data = "Bouteille noire : " + str(count)
+                            #self.object_publisher.publish(data)
 
                     else:
                         self.lastBlackDetectionCount = 0
@@ -209,6 +294,9 @@ class ObjectsDetector(Node):
             cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
             cv2.imshow('RealSense', cv_image)
             cv2.imshow('mask', mask)
+
+
+
             cv2.waitKey(1)
             
         
