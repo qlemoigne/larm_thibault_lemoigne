@@ -105,7 +105,10 @@ Enfin, il est important de noter que le script utilise une méthode de détectio
 
 Les résultats de la détection des bouteilles rouges et noires sont publiés sur le topic `/detection`
 
-    
+# Ameliorations possibles
+
+L'utilisation de tensorFlow pour la reconnaissance de bouteilles pourrait etre envisagee. 
+Calibrer la camera en utilisant les fonctions avancees de celle-ci est une source d'ameliorations possibles. Moyennner les resultqts publies pqr lq zebcqm serqit un bon moyen de reduire l'erreur caracteristique
 
 # Commandes utiles
 
