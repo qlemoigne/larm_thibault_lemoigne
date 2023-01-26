@@ -105,10 +105,14 @@ Enfin, il est important de noter que le script utilise une méthode de détectio
 
 Les résultats de la détection des bouteilles rouges et noires sont publiés sur le topic `/detection`
 
+# Challenge 3 :
+
+Le challenge 3 est simplement une evolution du challenge 2 qui integre l'apparition de modele de bouteille 
+
 # Ameliorations possibles
 
 L'utilisation de tensorFlow pour la reconnaissance de bouteilles pourrait etre envisagee. 
-Calibrer la camera en utilisant les fonctions avancees de celle-ci est une source d'ameliorations possibles. Moyennner les resultqts publies pqr lq zebcqm serqit un bon moyen de reduire l'erreur caracteristique
+Calibrer la camera en utilisant les fonctions avancees de celle-ci est une source d'ameliorations possibles. Moyennner les resultats publies par la webcam serait un bon moyen de reduire l'erreur caracteristique. 
 
 # Commandes utiles
 
@@ -135,3 +139,4 @@ ros2 run tf2_tools view_frames.py
 rviz2
 ```
 Ces commandes permettent de lancer les différents composants de notre projet, de visualiser les frames de notre système et de visualiser les données de capteur à l'aide de RVIZ2. Il est important de noter que vous devrez peut-être ajuster les chemins et les noms de fichiers de lancement en fonction de votre configuration.
+ 
