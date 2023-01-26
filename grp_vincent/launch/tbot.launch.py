@@ -39,7 +39,7 @@ def generate_launch_description():
 
         Node(package='grp_vincent', namespace='', executable='move'),
 
-        #Node(package='grp_vincent', namespace='', executable='objects'),
+        Node(package='grp_vincent', namespace='', executable='objects'),
 
          # PATH FINDING
          

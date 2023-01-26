@@ -8,7 +8,6 @@ from sensor_msgs.msg import PointCloud
 
 
 import time
-
 import sys
 sys.path.append("/install/kobuki_ros_interfaces/lib/python3.8/site-packages")
 from kobuki_ros_interfaces.msg import Sound
@@ -17,7 +16,7 @@ from kobuki_ros_interfaces.msg import WheelDropEvent
 
 import time
 import random
-OBS_DIST = 0.25
+
 
 class FuturNode(Node):
 
@@ -29,7 +28,9 @@ class FuturNode(Node):
     def finish(self):
         self.future.set_result('ok')
 
-
+'''
+Zone de détéction
+'''
 class ObstacleAreaData():
 
     def __init__(self, name, minx, miny, maxx, maxy):
@@ -48,6 +49,9 @@ class ObstacleAreaData():
 
         self.projectedDist = False
 
+    '''
+    Mise à jour
+    '''
     def update(self):
         self.count = self.countCopy
         self.closestDistance = self.closestDistanceCopy
@@ -56,7 +60,7 @@ class ObstacleAreaData():
         self.closestDistanceCopy = 10000.0
 
     '''
-    Il y a un objet dans la salle
+    Il y a un objet dans la zone
     '''
     def blocked(self):
         return self.closestDistance < 10000.0
@@ -67,10 +71,15 @@ class ObstacleAreaData():
     def isInside(self, point):
         return point.x >= self.minx and point.y >= self.miny and point.x <= self.maxx and point.y <= self.maxy
 
-
+    '''
+    Debug
+    '''
     def debug(self):
         print(f"State : " + self.name + " => C = " + str(self.count) + " CLOSEST = " + str(self.closestDistance) + ", BLOCK = " + str(self.blocked()) + "")
 
+    '''
+    Traitement d'un point
+    '''
     def computePoint(self, point):
         if self.isInside(point):
             
@@ -111,6 +120,8 @@ class MoveNode(FuturNode):
         self.timer = self.create_timer(0.1, self.activate) # 0.1 seconds to target a frequency of 10 hertz
 
         # Zones de détection
+        OBS_DIST = 0.25
+        
         self.frontLeft = ObstacleAreaData(name="Front Left", miny=0.0, maxy=0.19, minx=0.05, maxx=OBS_DIST)
         self.frontRight = ObstacleAreaData(name="Front Right", miny=-0.19, maxy=0.0, minx=0.05, maxx=OBS_DIST)
 
@@ -119,10 +130,8 @@ class MoveNode(FuturNode):
 
         self.frontPath = ObstacleAreaData(name="Front path", miny=-0.16, maxy=0.16 ,minx=0.1, maxx= 0.45)
 
-        # 0.35 = obs_dist
         self.longObstacle = ObstacleAreaData(name="Long obs", miny=-0.2, maxy=0.2,minx=OBS_DIST, maxx=OBS_DIST + 0.4)
         
-
         self.longFrontLeft = ObstacleAreaData(name="Long front left obs", miny=0.0, maxy=0.25,minx=OBS_DIST, maxx=OBS_DIST + 0.4)
         self.longFrontRight = ObstacleAreaData(name="Long front right obs", miny=-0.25, maxy=0.0,minx=OBS_DIST, maxx=OBS_DIST + 0.4)
         self.longFrontLeft.projectedDist = True
@@ -248,7 +257,6 @@ class MoveNode(FuturNode):
             self.blockTime = 0
         else:
             self.blockTime += 1
-            print("Block time : " + str(self.blockTime))
 
     def activate(self):
         
@@ -271,15 +279,12 @@ class MoveNode(FuturNode):
 
             # Detection d'une situation de blockage
             if self.blockTime > 5:
-                
                 velo.linear.x = 0.01
-
 
                 # Requête de rotation
                 self.rotateCount = 20
                 self.blockTime = 0
-            
-                
+
                 if self.rotateDir == 0.0:
                     if random.randint(0, 1) == 0:
                         self.rotateDir = 1.5
@@ -306,15 +311,14 @@ class MoveNode(FuturNode):
             # N'est pas dans une situation de blockage
             if self.frontLeft.blocked() == False and self.frontRight.blocked() == False:   
 
-                print("front pas block")
-
+                # Evolution de la vitesse linéaire x
                 if self.xSpeed == 0:
                     self.xSpeed = 0.05
 
-                if self.xSpeed < 0.6 and self.longObstacle.blocked() == False:
+                if self.xSpeed < 0.4 and self.longObstacle.blocked() == False:
                     self.xSpeed += 0.05
                 
-                if self.longObstacle.blocked() and self.xSpeed > 0.4:
+                if self.longObstacle.blocked() and self.xSpeed > 0.3:
                     self.xSpeed -= 0.05
 
                 if self.frontPath.blocked() and self.xSpeed > 0.1:
@@ -334,7 +338,6 @@ class MoveNode(FuturNode):
                     # Obstacle lointain à gauche (donc drifter à droite) si il n'y a rien a proximité droite
                     if ((self.longFrontLeft.count > 0 and self.longFrontLeft.closestDistance < self.longFrontRight.closestDistance) or self.frontExtremeLeft.blocked()) and self.frontExtremeRight.blocked() == False:
                         self.drift = -0.45 * 1 / self.longFrontLeft.closestDistance
-                        print("Drift vers Droite " + str(self.longFrontLeft.closestDistance))
 
                         # plus de force
                         if self.frontExtremeLeft.blocked():
@@ -346,7 +349,6 @@ class MoveNode(FuturNode):
                     # obstacle lointain à droite (donc on veut drifter à gauche) si il n'y a rien a proximité gauche
                     elif ((self.longFrontRight.count > 0 and self.longFrontRight.closestDistance < self.longFrontLeft.closestDistance) or self.frontExtremeRight.blocked()) and self.frontExtremeLeft.blocked() == False:
                         self.drift = 0.45 * 1 / self.longFrontRight.closestDistance
-                        print("Drift vers Gauche " + str(self.longFrontRight.closestDistance))
                     
                         # plus de force
                         if self.frontExtremeRight.blocked():
@@ -372,8 +374,6 @@ class MoveNode(FuturNode):
                 velo.angular.z = self.drift
 
             else:
-
-                print("bloqué =====")
                 # On arrête d'avancer
                 self.xSpeed = 0.0
 
@@ -402,14 +402,8 @@ class MoveNode(FuturNode):
                         else:
                             # vers droite
                             self.rotateDir = -0.9
-                        
-                        
-
-
             
                     self.rotateCount -= 1
-
-                    print("Rotate mode")
 
                     velo.linear.x = 0.01
                     velo.angular.z = self.rotateDir
@@ -432,10 +426,8 @@ class MoveNode(FuturNode):
 
                     if self.frontExtremeLeft.blocked() == False:
                         self.rotateDir = 0.9
-                        print("[MOuvement] GB Rotation vers Gauche")
                     else:
                         self.rotateDir = -0.9
-                        print("[MOuvement] GB Rotation vers Droite")
                 
                     velo.angular.z = self.rotateDir
 
@@ -447,33 +439,23 @@ class MoveNode(FuturNode):
 
                     if self.frontExtremeRight.blocked() == False:
                         self.rotateDir = -0.9
-                        print("[MOuvement] DB Rotation vers Droite")
                     else:
                         self.rotateDir = 0.9
-                        print("[MOuvement] DB Rotation vers Gauche")
 
                     velo.angular.z = self.rotateDir
 
 
                 
         else:
+            # traitement ordre
             velo = self.lastOrder
             
-        print("d = " + str(velo.linear.x)+ " " + str(velo.linear.y)+" " + str(velo.linear.z)+ " " +str(velo.angular.x)+" " + str(velo.angular.y)+ " " +str(velo.angular.z))
-            
-
         self.velocity_publisher.publish(velo)
-        
-        
 
-        
-     
 
 def main(args=None):
     rclpy.init(args=args)
     move = MoveNode()
-
-
 
     # Start the ros infinit loop with the move node.
     rclpy.spin_until_future_complete(move, future=move.future)

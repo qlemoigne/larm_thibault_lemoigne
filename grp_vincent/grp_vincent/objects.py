@@ -9,6 +9,7 @@ import sys, cv2
 import tf2_ros
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Pose
+
 from visualization_msgs.msg import Marker
 from std_msgs.msg import String
 import cv2
@@ -32,13 +33,6 @@ class ObjectsDetector(Node):
         self.staticLow = np.array([0,0,0]) # Slightly darker and dimmer orange
         self.staticHigh = np.array([0,0,0]) # Slighty lighter and brighter orange 
 
-
-        # Ecoutes des topics liés à la caméra
-        #self.create_subscription(Image, '/img', self.onImage, 10)
-        
-        # La profondeur n'est pas utilisé pour le moment
-        #self.create_subscription(Image, '/depth', self.onDepth, 10)
-
         # Création topic émission
         self.object_publisher = self.create_publisher(String, '/detection', 10)
         
@@ -57,13 +51,10 @@ class ObjectsDetector(Node):
         self.kernel4 = np.ones((4, 4), np.uint8)
         self.kernel6 = np.ones((6, 6), np.uint8)
 
-
         # Critères de calibration (Bouteille orange)
-        self.orangeFilters = [np.array([10,202,255]),np.array([11,255,234]),np.array([9,251,250]),np.array([12,243,250]),np.array([16,189,254]),np.array([14,255,249]),np.array([19,231,250]),]
-        self.orangeLow = np.array([2,35,37])
-        self.orangeHigh = np.array([3,22,37])
-
-
+        self.orangeFilters = [np.array([10,239,192]),np.array([15,165,253]),np.array([13,124,255]),np.array([13,228,204]),np.array([14,254,205]),np.array([16,230,247]),np.array([18,255,251]),np.array([12,255,186]),np.array([17,218,252]),np.array([12,254,196]),np.array([16,255,253]),np.array([10,189,244]),np.array([10,208,218]),]
+        self.orangeLow = np.array([2,20,39])
+        self.orangeHigh = np.array([2,20,39])
 
         # Chargement / resize du template (Bouteille noire)
         self.template = cv2.imread("bouteille-noire.png")
@@ -115,21 +106,17 @@ class ObjectsDetector(Node):
             print("RGB camera equired !!!")
             exit(0)
 
-        #config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 60)
-        #config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 60)
-
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 60)
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 60)
+        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 60)
+        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 60)
         
 
         self.profile = self.pipeline.start(self.config)
         
-        self.depth_sensor = profile.get_device().first_depth_sensor()
+        self.depth_sensor = self.profile.get_device().first_depth_sensor()
         self.depth_scale = self.depth_sensor.get_depth_scale()
-        
-        print("Depth Scale is: " , self.depth_scale)
-        
-        self.clipping_distance_in_meters = 3 #3 meter
+
+        # Config distance
+        self.clipping_distance_in_meters = 4
         self.clipping_distance = self.clipping_distance_in_meters / self.depth_scale
         
         self.align_to = rs.stream.color
@@ -152,41 +139,27 @@ class ObjectsDetector(Node):
         
         # Validate that both frames are valid
         if not self.aligned_depth_frame or not color_frame:
-            continue
+            return
             
             
-        depth_image = np.asanyarray(aligned_depth_frame.get_data())
-        color_image = np.asanyarray(color_frame.get_data())
-        '''color_frame = frames.first(rs.stream.color)
-
+        self.depth_image = np.asanyarray(self.aligned_depth_frame.get_data())
         color_image = np.asanyarray(color_frame.get_data())
 
-        self.color_intrin = color_frame.profile.as_video_stream_profile().intrinsics
-
-        self.depth_frame = frames.get_depth_frame()
-
-        if not (self.depth_frame and color_frame):
-            return'''
-            
         self.depth_intrin = self.aligned_depth_frame.profile.as_video_stream_profile().intrinsics
             
         # Remove background - Set pixels further than clipping_distance to grey
         grey_color = 153
-        depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) #depth image is 1 channel, color is 3 channels
+        depth_image_3d = np.dstack((self.depth_image,self.depth_image,self.depth_image)) #depth image is 1 channel, color is 3 channels
         bg_removed = np.where((depth_image_3d > self.clipping_distance) | (depth_image_3d <= 0), grey_color, color_image)    
         
-    
         # Appel listeners
-        # old : color_image
         self.onImage(bg_removed)
-
 
         # Envoit dans les topics
         msg_image = self.cvBridge.cv2_to_imgmsg(bg_removed,"bgr8")
         msg_image.header.stamp = self.get_clock().now().to_msg()
         msg_image.header.frame_id = "image"
         self.image_publisher.publish(msg_image)
-
 
 
     def transform_to_kdl(self, t):
@@ -200,6 +173,7 @@ class ObjectsDetector(Node):
         f = self.transform_to_kdl(transform) * PyKDL.Frame(PyKDL.Rotation.Quaternion(pose.pose.orientation.x, pose.pose.orientation.y,
                                                                             pose.pose.orientation.z, pose.pose.orientation.w),
                                                     PyKDL.Vector(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z))
+        
         res = PoseStamped()
         res.pose.position.x = f.p[0]
         res.pose.position.y = f.p[1]
@@ -212,47 +186,20 @@ class ObjectsDetector(Node):
     Retourne la pose estimée
     '''
     def estimatePose(self, x, y, w, h):
-
-
-        depth = self.depth_image[x:x+w,y:y+h].astype(float)
-
-        depth = depth * self.depth_scale
-        
-        dist,_,_,_ = cv2.mean(depth)
         mx = x + w/2
         my = y + h/2
         
-        depth2 = depth_frame.get_distance(j, i)
+        depth2 = self.aligned_depth_frame.get_distance(int(mx), int(my))
         depth_point = rs.rs2_deproject_pixel_to_point(self.depth_intrin, [mx, my], depth2)
-        
-        print("Distance :  {0:.3} m OU {1:.3} m".format(dist, depth2)) 
-        print("PTS :  {0:.3}  {1:.3} {2:.3}".format(depth_point[0], depth_point[1], depth_point[2])) 
-
-        
-        
-
-        #depth = self.depth_frame.get_distance(int(mx), int(my))
-
-        #if depth < 0.2 or depth > 3.0:
-        #    return
-
-        #print("depth = " + str(depth))
-        #dx ,dy, dz = rs.rs2_deproject_pixel_to_point(self.color_intrin, [int(mx),int(my)], depth)
-        #distance = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
-
-        #print("d = " + str(distance) + " x = " + str(dx) + " y = " + str(dy) + " z = " + str(dz))
 
         currentTime= rclpy.time.Time()
 
         pose = Pose()
-        pose.position.x = depth_point[0]
-        pose.position.y = depth_point[1]
-        pose.position.z = depth_point[2]
+        pose.position.x = depth_point[2]
+        pose.position.y = -depth_point[0]
+        pose.position.z = depth_point[1]
 
-        #print(pose)
-        
-        # Get Transformation
-        '''stampedTransform = None
+        stampedTransform = None
 
         try:
             stampedTransform= self.tf_buffer.lookup_transform(
@@ -260,49 +207,55 @@ class ObjectsDetector(Node):
                         'camera_link',
                         currentTime)
 
-
-            
         except tf2_ros.TransformException as tex:
             self.get_logger().info( f'Could not transform the Pose from ": {tex}')
-            return'''
+            return
 
   
-        # Compute goal in local coordinates
-        '''stampedGoal= PoseStamped()
+        # Translation de la Pose
+        stampedGoal= PoseStamped()
         stampedGoal.pose= pose
-        stampedGoal.header.frame_id= 'camera_link'
+        stampedGoal.header.frame_id= 'map'
         stampedGoal.header.stamp= self.get_clock().now().to_msg()
         
         globalPose = self.do_transform_pose( stampedGoal, stampedTransform )
-        return globalPose'''
-        return pose
-        
+
+        return globalPose
 
     '''
     Traitement d'une bouteille et publication sur topic markers
     '''
-    def handleBottle(self, pose, type):
+    def handleBottle(self, pose, bottleType):
 
         conflict = False
 
         for existing in self.bottlesPoses:
-            if self.areNear(existing, pose):
+            if self.areNear(existing, pose.pose):
                 conflict = True
                 break
 
         if conflict == False:
 
-            #self.bottlesPoses.append(pose)
+            self.bottlesPoses.append(pose.pose)
+
+            if pose.pose.position.y < -0.9:
+                print("skiped car y < 0.9")
+                return;
+
+            if bottleType == "black":
+                if pose.pose.position.y < -0.5 or pose.pose.position.y >= 1.5:
+                    print("skiped black bottle")
+                    return;
 
             data = String()
-            data.data = "Bouteille détectée !! " + type
+            data.data = "Bouteille détectée !! " + bottleType + " pose : " + str(pose.pose.position.y)
             self.object_publisher.publish(data)
             
 
             print("send marker")
 
             marker = Marker()
-            marker.header.frame_id = "camera_link"
+            marker.header.frame_id = "map"
             marker.header.stamp = self.get_clock().now().to_msg()
             marker.ns = "my_namespace"
             marker.id = len(self.bottlesPoses)
@@ -310,15 +263,20 @@ class ObjectsDetector(Node):
             marker.action =Marker.ADD
             
 
-
-            marker.pose = pose
-            marker.scale.x = 0.2
-            marker.scale.y = 0.2
-            marker.scale.z = 0.4
+            marker.pose = pose.pose
+            marker.scale.x = 0.1
+            marker.scale.y = 0.1
+            marker.scale.z = 0.3
             marker.color.a = 1.0
-            marker.color.r = 0.0
-            marker.color.g = 1.0
-            marker.color.b = 0.0
+            
+            if bottleType == "orange":
+                marker.color.r = 1.0
+                marker.color.g = 0.5
+                marker.color.b = 0.0
+            else:
+                marker.color.r = 0.0
+                marker.color.g = 0.0
+                marker.color.b = 0.0
 
             self.markerPublisher.publish(marker)
 
@@ -332,9 +290,9 @@ class ObjectsDetector(Node):
         b = np.array((new_marker.position.x, new_marker.position.y))
         dist = np.linalg.norm(a-b)
 
-        
+        print("dist = " + str(dist))
         #print("!!!! DISTANCE : " + str(dist) + " are in same area : " + str(dist<10))
-        return dist > 5
+        return dist < 1.0
 
     '''
     Reception messages liés à l'image RGB
@@ -404,8 +362,8 @@ class ObjectsDetector(Node):
                     if self.lastDetection + 2 < time.time():
                         self.lastDetectionCount += 1
 
-                        # minimum 3 détection dans les 3s
-                        if self.lastDetectionCount > 3:
+                        # minimum 2 détection dans les 3s
+                        if self.lastDetectionCount > 2:
 
                             pose = self.estimatePose(minc,minr, maxc - minc, maxr - minr)
 
@@ -428,8 +386,8 @@ class ObjectsDetector(Node):
             result = cv2.matchTemplate(edged, self.template, cv2.TM_CCORR_NORMED)
             (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result)
 
-            # seul de correspondance (arbitraire)
-            if maxVal > 0.19:
+            # seul de correspondance (arbitraire) 0.19
+            if maxVal > 1.15:
                 cv2.rectangle(cv_image, (maxLoc[0], maxLoc[1]), (maxLoc[0] + self.tW, maxLoc[1] + self.tH), (0, 255, 0), 2)
 
                 red_image = red_image[maxLoc[1]:maxLoc[1] + self.tH, maxLoc[0]:maxLoc[0] + self.tW]
