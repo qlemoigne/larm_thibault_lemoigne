@@ -2,11 +2,11 @@
 
 ## Introduction
 
-Ce repository contient les différents packages liés à l'UV LARM développé par Emile Thibault et Quentin Lemoigne. Il permet de créer une carte de l'environnement à travers un robot qui est capable d'aller à un point précis transmis sur RVIZ. Il envoie également un message dans le topic /detection lorsqu'il détecte une bouteille rouge ou noire.
+Ce repository contient les différents packages liés à l'UV LARM développé par Emile Thibault et Quentin Lemoigne. Il permet de créer une carte de l'environnement à travers un robot qui est capable d'aller à un point précis transmis sur RVIZ. Il envoie également un message dans le topic /detection lorsqu'il détecte une bouteille orange ou noire.
 
 ## Presentation
 
-Ce projet est un système de navigation autonome pour un robot utilisant ROS2 (Robot Operating System). Il utilise les données de capteurs de profondeur et de caméra pour créer une carte de l'environnement et permettre au robot de se déplacer vers un point spécifié via RVIZ. Le package contient également des fonctionnalités de détection d'objets, telles que la détection de bouteilles rouges et noires, qui envoient des messages dans le topic /detection lorsqu'elles sont détectées. Les nodes clés de ce package incluent scan_echo, qui nettoie et transmet les données du laser, move, qui gère les commandes de mouvement et objects, qui effectue la détection des objets.
+Ce projet est un système de navigation autonome pour un robot utilisant ROS2 (Robot Operating System). Il utilise les données de capteurs de profondeur et de caméra pour créer une carte de l'environnement et permettre au robot de se déplacer vers un point spécifié via RVIZ. Le package contient également des fonctionnalités de détection d'objets, telles que la détection de bouteilles oranges et noires, qui envoient des messages dans le topic /detection lorsqu'elles sont détectées. Les nodes clés de ce package incluent scan_echo, qui nettoie et transmet les données du laser, move, qui gère les commandes de mouvement et objects, qui effectue la détection des objets.
 
 *Pour lancer le projet, il est important d'utiliser les fichiers launch suivants.*
 
@@ -79,7 +79,7 @@ ros2 launch grp_vincent simulation.launch.py
 
 # Challenge 2 : Traitement d'image de la Kinect embarquée
 
-Le challenge 2 de notre projet consiste à utiliser la Kinect embarquée sur notre robot pour détecter les bouteilles rouges et noires dans l'environnement. Pour ce faire, nous avons écrit un script Python qui utilise les bibliothèques `OpenCV` et `Pyrealsense2` pour traiter les images capturées par la Kinect.
+Le challenge 2 de notre projet consiste à utiliser la Kinect embarquée sur notre robot pour détecter les bouteilles oranges et noires dans l'environnement. Pour ce faire, nous avons écrit un script Python qui utilise les bibliothèques `OpenCV` et `Pyrealsense2` pour traiter les images capturées par la Kinect.
 
 ### Prérequis
 
@@ -93,21 +93,22 @@ Pour utiliser ce script, il suffit de lancer la commande suivante :
 ```
 ros2 run <nom_du_package> objects_detector.py
 ```
-Ce script s'abonne aux topics de la Kinect pour récupérer les images de la caméra et de la profondeur. Il utilise ensuite divers filtres et techniques de traitement d'image pour détecter les bouteilles rouges et noires dans l'environnement. Il publie ensuite les résultats de ces détections sur un topic spécifique.
+Ce script s'abonne aux topics de la Kinect pour récupérer les images de la caméra et de la profondeur. Il utilise ensuite divers filtres et techniques de traitement d'image pour détecter les bouteilles oranges et noires dans l'environnement. Il publie ensuite les résultats de ces détections sur un topic spécifique.
 
-Il est important de noter que le script utilise des filtres de couleur prédéfinis pour détecter les bouteilles rouges et noires, et qu'il est possible de les calibrer en modifiant les variables staticLow et staticHigh pour les bouteilles rouges, et les variables orangeLow et orangeHigh pour les bouteilles oranges dans le script. Il est également possible de changer les paramètres de détection de bouteilles noires en modifiant le fichier de template utilisé et les paramètres de filtre de contours.
+Il est important de noter que le script utilise des filtres de couleur prédéfinis pour détecter les bouteilles oranges et noires, et qu'il est possible de les calibrer en modifiant les variables staticLow et staticHigh pour les bouteilles oranges, et les variables orangeLow et orangeHigh pour les bouteilles oranges dans le script. Il est également possible de changer les paramètres de détection de bouteilles noires en modifiant le fichier de template utilisé et les paramètres de filtre de contours.
 
 Il est important de noter que le script utilise également une méthode de détection basée sur un template pour détecter les bouteilles noires, ce qui peut entraîner des erreurs dans les résultats si les bouteilles noires dans l'environnement ont des dimensions ou des orientations différentes de celles utilisées pour créer le template.
 
-Enfin, il est important de noter que le script utilise une méthode de détection basée sur la profondeur pour détecter les bouteilles rouges, qui peut entraîner des erreurs dans les résultats si les bouteilles rouges dans l'environnement ont des couleurs similaires à celles utilisées pour créer les filtres de couleur.
+Enfin, il est important de noter que le script utilise une méthode de détection basée sur la profondeur pour détecter les bouteilles oranges, qui peut entraîner des erreurs dans les résultats si les bouteilles oranges dans l'environnement ont des couleurs similaires à celles utilisées pour créer les filtres de couleur.
 
 ### Résultats
 
-Les résultats de la détection des bouteilles rouges et noires sont publiés sur le topic `/detection`
+Les résultats de la détection des bouteilles oranges
+et noires sont publiés sur le topic `/detection`
 
 # Challenge 3 :
 
-Le challenge 3 est simplement une evolution du challenge 2 qui integre l'apparition de modele de bouteille 
+Le challenge 3 est simplement une evolution du challenge 2 qui integre l'apparition de modele de bouteille dans RVIZ. Pour cela on estime leur position grace a la camera de profondeur que l'on transforme dans le plan de lq map. La distinction entre bouteille orange et noire est difficile mais la priorite nous pose un probleme. Un diametre d'un metre est 
 
 # Ameliorations possibles
 
