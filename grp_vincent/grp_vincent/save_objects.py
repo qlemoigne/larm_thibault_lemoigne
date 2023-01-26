@@ -46,6 +46,12 @@ class ObjectsDetector(Node):
         # Transform tool:
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+ 
+
+        # COnfig camera
+        self.camera_width = 484.0
+        self.camera_height = 480.0
+        self.hfov = 69
 
         # Historique de detection
         self.bottlesPoses = []
@@ -85,7 +91,12 @@ class ObjectsDetector(Node):
         # Détection delay noir
         self.lastBlackDetection = 0
         self.lastBlackDetectionCount = 0
-        
+
+
+        # Lancement camera
+        self.pipeline = rs.pipeline()
+        config = rs.config()
+
         # Creation topic sensor_msgs/image
         self.image_publisher = self.create_publisher(Image, '/camera/image', 10)
         self.depth_publisher = self.create_publisher(Image, '/camera/depth', 10)
@@ -93,14 +104,8 @@ class ObjectsDetector(Node):
         # Get device product line for setting a supporting resolution
         self.cvBridge = CvBridge();
 
-
-        # Lancement camera
-        self.pipeline = rs.pipeline()
-        self.config = rs.config()
-
-
         pipeline_wrapper = rs.pipeline_wrapper(self.pipeline)
-        pipeline_profile = self.config.resolve(pipeline_wrapper)
+        pipeline_profile = config.resolve(pipeline_wrapper)
         device = pipeline_profile.get_device()
         device_product_line = str(device.get_info(rs.camera_info.product_line))
 
@@ -112,52 +117,23 @@ class ObjectsDetector(Node):
                 found_rgb = True
 
         if not (found_rgb):
-            print("RGB camera equired !!!")
+            print("Depth camera equired !!!")
             exit(0)
 
-        #config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 60)
-        #config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 60)
+        config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 60)
+        config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 60)
 
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 60)
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 60)
-        
-
-        self.profile = self.pipeline.start(self.config)
-        
-        self.depth_sensor = profile.get_device().first_depth_sensor()
-        self.depth_scale = self.depth_sensor.get_depth_scale()
-        
-        print("Depth Scale is: " , self.depth_scale)
-        
-        self.clipping_distance_in_meters = 3 #3 meter
-        self.clipping_distance = self.clipping_distance_in_meters / self.depth_scale
-        
-        self.align_to = rs.stream.color
-        self.align = rs.align(self.align_to)
-        
+        self.pipeline.start(config)
         self.timer = self.create_timer(0.05, self.cameraHandler) # 0.1 seconds to target a frequency of 10 hertz
 
     '''
     Traitement frame reçues
     '''
     def cameraHandler(self):
-    
         frames = self.pipeline.wait_for_frames()
 
-        # Align the depth frame to color frame
-        aligned_frames = self.align.process(frames)
-        
-        self.aligned_depth_frame = aligned_frames.get_depth_frame() # aligned_depth_frame is a 640x480 depth image
-        color_frame = aligned_frames.get_color_frame()
-        
-        # Validate that both frames are valid
-        if not self.aligned_depth_frame or not color_frame:
-            continue
-            
-            
-        depth_image = np.asanyarray(aligned_depth_frame.get_data())
-        color_image = np.asanyarray(color_frame.get_data())
-        '''color_frame = frames.first(rs.stream.color)
+        #depth_frame = frames.first(rs.stream.depth)
+        color_frame = frames.first(rs.stream.color)
 
         color_image = np.asanyarray(color_frame.get_data())
 
@@ -166,23 +142,14 @@ class ObjectsDetector(Node):
         self.depth_frame = frames.get_depth_frame()
 
         if not (self.depth_frame and color_frame):
-            return'''
-            
-        self.depth_intrin = self.aligned_depth_frame.profile.as_video_stream_profile().intrinsics
-            
-        # Remove background - Set pixels further than clipping_distance to grey
-        grey_color = 153
-        depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) #depth image is 1 channel, color is 3 channels
-        bg_removed = np.where((depth_image_3d > self.clipping_distance) | (depth_image_3d <= 0), grey_color, color_image)    
-        
+            return
+
     
         # Appel listeners
-        # old : color_image
-        self.onImage(bg_removed)
-
+        self.onImage(color_image)
 
         # Envoit dans les topics
-        msg_image = self.cvBridge.cv2_to_imgmsg(bg_removed,"bgr8")
+        msg_image = self.cvBridge.cv2_to_imgmsg(color_image,"bgr8")
         msg_image.header.stamp = self.get_clock().now().to_msg()
         msg_image.header.frame_id = "image"
         self.image_publisher.publish(msg_image)
@@ -214,40 +181,26 @@ class ObjectsDetector(Node):
     def estimatePose(self, x, y, w, h):
 
 
-        depth = self.depth_image[x:x+w,y:y+h].astype(float)
-
-        depth = depth * self.depth_scale
-        
-        dist,_,_,_ = cv2.mean(depth)
         mx = x + w/2
         my = y + h/2
-        
-        depth2 = depth_frame.get_distance(j, i)
-        depth_point = rs.rs2_deproject_pixel_to_point(self.depth_intrin, [mx, my], depth2)
-        
-        print("Distance :  {0:.3} m OU {1:.3} m".format(dist, depth2)) 
-        print("PTS :  {0:.3}  {1:.3} {2:.3}".format(depth_point[0], depth_point[1], depth_point[2])) 
 
-        
-        
-
-        #depth = self.depth_frame.get_distance(int(mx), int(my))
+        depth = self.depth_frame.get_distance(int(mx), int(my))
 
         #if depth < 0.2 or depth > 3.0:
         #    return
 
-        #print("depth = " + str(depth))
-        #dx ,dy, dz = rs.rs2_deproject_pixel_to_point(self.color_intrin, [int(mx),int(my)], depth)
-        #distance = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
+        print("depth = " + str(depth))
+        dx ,dy, dz = rs.rs2_deproject_pixel_to_point(self.color_intrin, [int(mx),int(my)], depth)
+        distance = math.sqrt(((dx)**2) + ((dy)**2) + ((dz)**2))
 
         #print("d = " + str(distance) + " x = " + str(dx) + " y = " + str(dy) + " z = " + str(dz))
 
         currentTime= rclpy.time.Time()
 
         pose = Pose()
-        pose.position.x = depth_point[0]
-        pose.position.y = depth_point[1]
-        pose.position.z = depth_point[2]
+        pose.position.x = dx
+        pose.position.y = dy
+        pose.position.z = dz
 
         #print(pose)
         
