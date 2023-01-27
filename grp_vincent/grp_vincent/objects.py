@@ -51,10 +51,11 @@ class ObjectsDetector(Node):
         self.kernel4 = np.ones((4, 4), np.uint8)
         self.kernel6 = np.ones((6, 6), np.uint8)
 
-        # Critères de calibration (Bouteille orange)
-        self.orangeFilters = [np.array([10,239,192]),np.array([15,165,253]),np.array([13,124,255]),np.array([13,228,204]),np.array([14,254,205]),np.array([16,230,247]),np.array([18,255,251]),np.array([12,255,186]),np.array([17,218,252]),np.array([12,254,196]),np.array([16,255,253]),np.array([10,189,244]),np.array([10,208,218]),]
-        self.orangeLow = np.array([2,20,39])
-        self.orangeHigh = np.array([2,20,39])
+        # Critères de calibration (Bouteille orange) Définis par le fichier calibrer.py
+        self.orangeFilters = [np.array([12,222,249]),np.array([10,255,180]),np.array([14,239,217]),np.array([12,248,190]),np.array([13,252,198]),np.array([14,236,232]),np.array([15,214,253]),np.array([13,233,253]),np.array([12,209,249]),np.array([7,162,255]),np.array([9,177,252]),np.array([5,207,223]),np.array([6,137,252]),np.array([9,217,213]),np.array([9,130,253]),np.array([13,195,250]),np.array([11,183,209]),np.array([6,211,191]),np.array([13,154,255]),np.array([7,229,150]),np.array([13,233,175]),np.array([12,187,200]),]
+        self.orangeLow = np.array([2,16,32])
+        self.orangeHigh = np.array([2,17,32])
+
 
         # Chargement / resize du template (Bouteille noire)
         self.template = cv2.imread("bouteille-noire.png")
@@ -183,22 +184,27 @@ class ObjectsDetector(Node):
         return res
 
     '''
-    Retourne la pose estimée
+    Retourne la pose / position estimée dans le répére map
     '''
     def estimatePose(self, x, y, w, h):
+
+        # Point central
         mx = x + w/2
         my = y + h/2
         
+        # Profondeur avec camera
         depth2 = self.aligned_depth_frame.get_distance(int(mx), int(my))
         depth_point = rs.rs2_deproject_pixel_to_point(self.depth_intrin, [mx, my], depth2)
 
         currentTime= rclpy.time.Time()
 
+        # POse dans le repére camera_link
         pose = Pose()
         pose.position.x = depth_point[2]
         pose.position.y = -depth_point[0]
         pose.position.z = depth_point[1]
 
+        # demande de transformation de camera_link à map
         stampedTransform = None
 
         try:
@@ -211,8 +217,7 @@ class ObjectsDetector(Node):
             self.get_logger().info( f'Could not transform the Pose from ": {tex}')
             return
 
-  
-        # Translation de la Pose
+        # Translation de la Pose dans le repère map
         stampedGoal= PoseStamped()
         stampedGoal.pose= pose
         stampedGoal.header.frame_id= 'map'
@@ -229,31 +234,32 @@ class ObjectsDetector(Node):
 
         conflict = False
 
+        # On regarde si deux point sont proches
         for existing in self.bottlesPoses:
             if self.areNear(existing, pose.pose):
                 conflict = True
                 break
 
+        # Pas de conflict on ajoute
         if conflict == False:
 
             self.bottlesPoses.append(pose.pose)
 
-            if pose.pose.position.y < -0.9:
-                print("skiped car y < 0.9")
+            # filtre de hauteur
+            if pose.pose.position.y < -1.5:
                 return;
 
+            # filtre plus restrictif pour les bouteilels noir (en pratique n'est pas utilisé car on ne crée par de markers pour les bouteilles noires)
             if bottleType == "black":
                 if pose.pose.position.y < -0.5 or pose.pose.position.y >= 1.5:
-                    print("skiped black bottle")
                     return;
 
+            # Envoit message
             data = String()
             data.data = "Bouteille détectée !! " + bottleType + " pose : " + str(pose.pose.position.y)
             self.object_publisher.publish(data)
             
-
-            print("send marker")
-
+            # Envoit marker
             marker = Marker()
             marker.header.frame_id = "map"
             marker.header.stamp = self.get_clock().now().to_msg()
@@ -261,7 +267,6 @@ class ObjectsDetector(Node):
             marker.id = len(self.bottlesPoses)
             marker.type = Marker.CYLINDER
             marker.action =Marker.ADD
-            
 
             marker.pose = pose.pose
             marker.scale.x = 0.1
@@ -280,40 +285,33 @@ class ObjectsDetector(Node):
 
             self.markerPublisher.publish(marker)
 
+    '''
+    Permet de savoir si 2 poses sont proche (soit à moins de 90cm de distance)
+    '''
     def areNear(self, existing_marker: Pose, new_marker: Pose):
 
-        if new_marker == None:
-            print("invalid new marker")
+        # Vérification validité de marker
+        if new_marker == None or existing_marker == None:
             return True
 
         a = np.array((existing_marker.position.x, existing_marker.position.y))
         b = np.array((new_marker.position.x, new_marker.position.y))
         dist = np.linalg.norm(a-b)
 
-        print("dist = " + str(dist))
-        #print("!!!! DISTANCE : " + str(dist) + " are in same area : " + str(dist<10))
-        return dist < 1.0
+        return dist < 0.9
 
     '''
     Reception messages liés à l'image RGB
     '''
     def onImage(self, cv_image):
-        #bridge = CvBridge()
-
-
         try:
-            #cv_image = bridge.imgmsg_to_cv2(data, desired_encoding="passthrough")
-        
-    
             image_hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
             self.image_hsv = image_hsv
 
             # Traitement pour les bouteilles orange
-
             image_hsv = cv2.erode(image_hsv, self.kernel3, iterations=2)
 
-            
-            # Application des mask
+            # Application des mask pour ne garder que le orange calibré
             mask = cv2.inRange(image_hsv, self.staticLow, self.staticHigh)
 
             for filter in self.orangeFilters:
@@ -321,7 +319,6 @@ class ObjectsDetector(Node):
                 mask = cv2.add(mask, temp_mask)
             
             # Nettoyage des residus présent dans le mask final
-
             mask = cv2.erode(mask, kernel=self.kernel2, iterations=4)
             mask = cv2.dilate(mask, kernel=self.kernel4, iterations=5)
 
@@ -329,25 +326,27 @@ class ObjectsDetector(Node):
             mask = cv2.dilate(mask, kernel=self.kernel4, iterations=2)
 
             # Recherche des regions
-
             label_image = label(mask)
             regions = regionprops(label_image)
 
+            # Analyse des regions
             for props in regions:
                 minr, minc, maxr, maxc = props.bbox
 
                 rsize = maxr - minr
                 csize = maxc - minc
 
+                # Calcul ratio
                 ratio = csize / rsize
 
+                # On restreint aux bouteilles verticales
                 if csize > rsize:
                     continue
-
+                
                 if props.extent > 0.85 or props.extent < 0.35:
                     continue
 
-                # test horizontal
+                # Restriction du ratio
 
                 if ratio <= 0.5 and ratio >= 0.3:
                     perimetre = 2 * rsize + 2 * csize
@@ -356,17 +355,19 @@ class ObjectsDetector(Node):
                     if perimetre > 1000 or perimetre < 90:
                         continue
 
+                    # On affiche rectangle pour debug
                     cv2.rectangle(cv_image, (int(minc), int(minr)), (int(maxc) ,int(maxr)), (255, 0, 0), 2)
                     
-                    # vérification nombre détections
+                    # vérification nombre détections : au moins 4 en 2s pour être valide
                     if self.lastDetection + 2 < time.time():
                         self.lastDetectionCount += 1
 
-                        # minimum 2 détection dans les 3s
-                        if self.lastDetectionCount > 2:
+                        if self.lastDetectionCount > 4:
 
-                            pose = self.estimatePose(minc,minr, maxc - minc, maxr - minr)
+                            # Calcul de la position dans frame map
+                            pose = self.estimatePose(minc, minr, maxc - minc, maxr - minr)
 
+                            # Si valide on envoit marker
                             if pose != None:
                                 self.handleBottle(pose, 'orange')
 
@@ -379,15 +380,19 @@ class ObjectsDetector(Node):
             # Traitement bouteilles noires
 
             gray_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+
+            # On extrait le canal rouge
             red_image = cv_image[:,:,2]
-       
+
+            # Filtre de canny permet extraire des "zones"
             edged = cv2.Canny(gray_image, 50, 100)
-    
+
+            # On essaie de détecter notre template (bouteille noire avec étiquette rouge)
             result = cv2.matchTemplate(edged, self.template, cv2.TM_CCORR_NORMED)
             (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result)
 
-            # seul de correspondance (arbitraire) 0.19
-            if maxVal > 1.15:
+            # seul de correspondance (arbitraire obtenu avec les tests) 0.20
+            if maxVal > 0.20:
                 cv2.rectangle(cv_image, (maxLoc[0], maxLoc[1]), (maxLoc[0] + self.tW, maxLoc[1] + self.tH), (0, 255, 0), 2)
 
                 red_image = red_image[maxLoc[1]:maxLoc[1] + self.tH, maxLoc[0]:maxLoc[0] + self.tW]
@@ -396,20 +401,21 @@ class ObjectsDetector(Node):
 
                 # verification du nombre de pixel rouge dans la zone (étiquettes)
                 if count > 100:
+                    # Vérification nombre détectins : au moins 3 en 2s pour être valide
                     if self.lastBlackDetection + 2 < time.time():
                         self.lastBlackDetectionCount += 1
 
-                        # minimum 3 détection dans les 3s
+                        # minimum 3 détection dans les 2s
                         if self.lastBlackDetectionCount > 3:
 
+                            # n'ajoute pas de marker pour les bouteilles noir (car trop de faux positifs), mais envoit un msg
+                            #pose = self.estimatePose(maxLoc[0], maxLoc[1], self.tW, self.tH)
 
-                            pose = self.estimatePose(maxLoc[0], maxLoc[1], self.tW, self.tH)
-
-                            if pose != None:
-                                self.handleBottle(pose, 'black')
-                            #data = String()
-                            #data.data = "Bouteille noire : " + str(count)
-                            #self.object_publisher.publish(data)
+                            #if pose != None:
+                                #self.handleBottle(pose, 'black')
+                            data = String()
+                            data.data = "Bouteille noire"
+                            self.object_publisher.publish(data)
 
                     else:
                         self.lastBlackDetectionCount = 0
@@ -417,9 +423,7 @@ class ObjectsDetector(Node):
 
             cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
             cv2.imshow('RealSense', cv_image)
-            cv2.imshow('mask', mask)
-
-
+            cv2.imshow('Mask', mask)
 
             cv2.waitKey(1)
             

@@ -19,8 +19,6 @@ class ScanInterpret(Node):
         self.scanner_publisher = self.create_publisher(PointCloud, '/laser/pointcloud', 10)
 
     def scan_callback(self, scanMsg):
-        #self.get_logger().info( f"scan:\n{scanMsg}" )
-
 
         obstacles= []
         angle= scanMsg.angle_min
@@ -29,16 +27,16 @@ class ScanInterpret(Node):
         # Y : gauche / droite
 
         for aDistance in scanMsg.ranges :
+            # Si point trop loin on ignore
             if aDistance < 5.0 :
 
                 p = Point32()
 
                 p.x = math.cos(angle) * aDistance
-
-
                 p.y = math.sin( angle ) * aDistance
                 p.z = 0.0
-
+                
+                # si point derrière on ignore
                 if p.x > 0:
                     obstacles.append(p)
             angle+= scanMsg.angle_increment
@@ -50,12 +48,6 @@ class ScanInterpret(Node):
         pc.points = obstacles
 
         self.scanner_publisher.publish(pc)
-
-
-        
-
-
-        
 
 def main(args=None):
     rclpy.init(args=args)

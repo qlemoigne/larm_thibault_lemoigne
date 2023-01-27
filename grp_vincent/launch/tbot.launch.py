@@ -46,8 +46,8 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([launch_file_dir2, '/online_async_launch.py']),
             launch_arguments={'use_sim_time': 'False'}.items()
-            )
-        #IncludeLaunchDescription(
-        #    PythonLaunchDescriptionSource([launch_file_dir3, '/navigation_launch.py']))
+            ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([launch_file_dir3, '/navigation_launch.py']))
     
     ])

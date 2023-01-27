@@ -139,7 +139,7 @@ class MoveNode(FuturNode):
 
         # Ordre de mouvement (liés au pathfinder) valeur et date
         self.lastOrder = Twist()
-        self.lastOrderTime = time.time() + 5 # +5 permet d'attendre 5s avant de lancer robot au démarrage
+        self.lastOrderTime = time.time() + 10 # +10 permet d'attendre 10s avant de lancer robot au démarrage
 
         # Temps de blocage du robot (permet lancer demi-tour)
         self.blockTime = 0
@@ -315,6 +315,7 @@ class MoveNode(FuturNode):
                 if self.xSpeed == 0:
                     self.xSpeed = 0.05
 
+                # 0.4 norm
                 if self.xSpeed < 0.4 and self.longObstacle.blocked() == False:
                     self.xSpeed += 0.05
                 
@@ -343,8 +344,7 @@ class MoveNode(FuturNode):
                         if self.frontExtremeLeft.blocked():
                             self.drift -= 0.1
 
-                        self.driftCount = 5
-
+                        self.driftCount = random.randint(5, 8)
 
                     # obstacle lointain à droite (donc on veut drifter à gauche) si il n'y a rien a proximité gauche
                     elif ((self.longFrontRight.count > 0 and self.longFrontRight.closestDistance < self.longFrontLeft.closestDistance) or self.frontExtremeRight.blocked()) and self.frontExtremeLeft.blocked() == False:
@@ -354,7 +354,7 @@ class MoveNode(FuturNode):
                         if self.frontExtremeRight.blocked():
                             self.drift += 0.1
 
-                        self.driftCount = 5
+                        self.driftCount = random.randint(5, 8)
 
                     else:
                         self.drift = 0.0
@@ -383,7 +383,7 @@ class MoveNode(FuturNode):
                     if self.frontExtremeLeft.blocked() != self.frontExtremeRight.blocked():
                         
                         # Requête de rotation (minimum 5 rotations)
-                        self.rotateCount = random.randint(5, 10)
+                        self.rotateCount = random.randint(5, 15)
 
                         if self.frontExtremeLeft.blocked():
                             # rotate droite
@@ -394,7 +394,7 @@ class MoveNode(FuturNode):
                     else:
                         
                         # Requête de rotation (minimum 5 rotations)
-                        self.rotateCount = random.randint(5, 10)
+                        self.rotateCount = random.randint(5, 15)
 
                         if self.frontLeft.closestDistance > self.frontRight.closestDistance:
                             # vers gauche
