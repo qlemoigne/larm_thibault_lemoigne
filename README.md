@@ -4,6 +4,10 @@
 
 Ce repository contient les différents packages liés à l'UV LARM développé par Emile Thibault et Quentin Lemoigne. Il permet de créer une carte de l'environnement à travers un robot qui est capable d'aller à un point précis transmis sur RVIZ. Il envoie également un message dans le topic /detection lorsqu'il détecte une bouteille orange ou noire.
 
+Le contenu actuel du repo est celui du challenge 3. Des releases sont disponible sur Github pour chaque challenge :
+- Challenge 1 : https://github.com/qlemoigne/larm_thibault_lemoigne/releases/tag/challenge-1
+- Challenge 2 : https://github.com/qlemoigne/larm_thibault_lemoigne/releases/tag/challenge-2
+
 ## Presentation
 
 Ce projet est un système de navigation autonome pour un robot utilisant ROS2 (Robot Operating System). Il utilise les données de capteurs de profondeur et de caméra pour créer une carte de l'environnement et permettre au robot de se déplacer vers un point spécifié via RVIZ. Le package contient également des fonctionnalités de détection d'objets, telles que la détection de bouteilles oranges et noires, qui envoient des messages dans le topic /detection lorsqu'elles sont détectées. Les nodes clés de ce package incluent scan_echo, qui nettoie et transmet les données du laser, move, qui gère les commandes de mouvement et objects, qui effectue la détection des objets.
@@ -13,6 +17,8 @@ Ce projet est un système de navigation autonome pour un robot utilisant ROS2 (R
     tbot.launch.py : Lancer l'ensemble des éléments
     simulation.launch.py : Lancer la simulation
     visualize.launch.py : Lancer la visualisation (rviz2)
+
+On utiliseral a commande suivante : '''ros2 launch grp_vincent <nom launch file>'''
 
 
 ## Installation
@@ -60,76 +66,56 @@ Un clic droit dans la fenêtre ferme le programme et envoit le code associé aux
 
 ## Résumé
 
-Ce package contient les nodes suivantes en plus de celles de base :
+Le challenge 1 consiste à permettre au robot de se déplacer dans une carte, tout en évitant les obstacles.
+
+Pour ce challenge les nodes suivantes sont utilisées :
 - scan_echo : Nettoie et transmet les données du laser sur un topic
 - move : Gére le mouvement selon les informations du laser
 - camera : Transmet les données de la camera sur un topic
 
-## PC embarqué vincent :
-
-Lancer Robot (Driver + Laser + Camera + Move + Détection + Mapper):
-
-```
-ros2 launch grp_vincent tbot.launch.py
-```
-
-## PC controleur robnet - visualisation :
-
-```
-ros2 launch grp_vincent visualize.launch.py
-```
-
-## Simulation :
-
-```
-ros2 launch grp_vincent simulation.launch.py
-```
-
 ---
 
-# Challenge 2 : Traitement d'image de la Kinect embarquée
+# Challenge 2
 
-Le challenge 2 de notre projet consiste à utiliser la Kinect embarquée sur notre robot pour détecter les bouteilles oranges et noires dans l'environnement. Pour ce faire, nous avons écrit un script Python qui utilise les bibliothèques `OpenCV` et `Pyrealsense2` pour traiter les images capturées par la Kinect.
+## Résumé
 
-### Prérequis
+Le challenge 2 de notre projet consiste à utiliser la caméra embarquée sur notre robot pour détecter les bouteilles oranges et noires dans l'environnement. 
 
-* Avoir installé la bibliothèque Pyrealsense2
+Le script utilise les couleurs pour détécter les bouteilles oranges, il est possible d'améliorer la précision en utilisant la calibration.
+Pour la détection des nouteilles noires, elle est basée sur un template et un filtre de canny.
 
-* Avoir installé OpenCV pour Python
+Par ailleurs, le robot est capable de réaliser une carte de son environnement en utilisant SLAM. Il est aussi possible de lui envoyer un ordre d'aller à un point en utilisant un goal pose.
 
-### Utilisation
+Pour ce challenge les nodes suivantes sont utilisées :
+- scan_echo : Nettoie et transmet les données du laser sur un topic
+- move : Gére le mouvement selon les informations de commande / du laser
+- objects : Capture et traitement données camera
 
-Pour utiliser ce script, il suffit de lancer la commande suivante :
-```
-ros2 run <nom_du_package> objects_detector.py
-```
-Ce script s'abonne aux topics de la Kinect pour récupérer les images de la caméra et de la profondeur. Il utilise ensuite divers filtres et techniques de traitement d'image pour détecter les bouteilles oranges et noires dans l'environnement. Il publie ensuite les résultats de ces détections sur un topic spécifique.
+## Topic utiles
 
-Il est important de noter que le script utilise des filtres de couleur prédéfinis pour détecter les bouteilles oranges et noires, et qu'il est possible de les calibrer en modifiant les variables staticLow et staticHigh pour les bouteilles oranges, et les variables orangeLow et orangeHigh pour les bouteilles oranges dans le script. Il est également possible de changer les paramètres de détection de bouteilles noires en modifiant le fichier de template utilisé et les paramètres de filtre de contours.
-
-Il est important de noter que le script utilise également une méthode de détection basée sur un template pour détecter les bouteilles noires, ce qui peut entraîner des erreurs dans les résultats si les bouteilles noires dans l'environnement ont des dimensions ou des orientations différentes de celles utilisées pour créer le template.
-
-Enfin, il est important de noter que le script utilise une méthode de détection basée sur la profondeur pour détecter les bouteilles oranges, qui peut entraîner des erreurs dans les résultats si les bouteilles oranges dans l'environnement ont des couleurs similaires à celles utilisées pour créer les filtres de couleur.
-
-### Résultats
-
-Les résultats de la détection des bouteilles oranges
-et noires sont publiés sur le topic `/detection`
+`/detection` : Un message est envoyé lors de la détéction d'une bouteille
 
 # Challenge 3 :
 
-Le challenge 3 est simplement une evolution du challenge 2 qui integre l'apparition de modele de bouteille dans RVIZ. Pour cela on estime leur position grace a la camera de profondeur que l'on transforme dans le plan de la map. Nous avons restreint l'affichage des markers aux bouteilles orange car la détéction est plus fiable. Un espace de 0.9m entre chaque bouteilles est nécessaire, car il s'agit de notre zone d'incertitude.
+## Résumé
 
-# Ameliorations possibles
+Le challenge 3 est simplement une evolution du challenge 2 qui integre l'apparition de marker pour chaque bouteille dans RVIZ. Pour cela on estime leur position grace a la camera de profondeur que l'on transforme dans le plan de la map. Nous avons restreint l'affichage des markers aux bouteilles orange car la détéction est plus fiable. Un espace de 0.9m entre chaque bouteilles est nécessaire, car il s'agit de notre zone d'incertitude.
 
-L'utilisation de tensorFlow pour la reconnaissance de bouteilles pourrait etre envisagee. 
-Calibrer la camera en utilisant les fonctions avancees de celle-ci est une source d'ameliorations possibles.
-Moyennner les resultats publies par la webcam serait un bon moyen de reduire l'erreur caracteristique.
-Exploiter la détéction par template est aussi possible.
+Pour ce challenge les nodes suivantes sont utilisées :
+- scan_echo : Nettoie et transmet les données du laser sur un topic
+- move : Gére le mouvement selon les informations de commande / du laser
+- objects : Capture et traitement données camera
 
-# Commandes utiles
+## Ameliorations possibles
 
-Les commandes suivantes sont utiles pour lancer les différents composants de notre projet :
+- L'utilisation de tensorFlow pour la reconnaissance de bouteilles pourrait etre envisagee. 
+- Calibrer la camera en utilisant les fonctions avancees de celle-ci est une source d'ameliorations possibles.
+- Moyennner les resultats publies par la webcam serait un bon moyen de reduire l'erreur caracteristique.
+- Exploiter la détéction par template est aussi possible.
+
+# Commandes utiles au debogage
+
+Les commandes suivantes sont utiles pour debug le projet :
 
 **Base uniquement**
 ```
