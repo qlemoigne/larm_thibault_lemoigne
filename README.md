@@ -8,6 +8,10 @@ Le contenu actuel du repo est celui du challenge 3. Des releases sont disponible
 - Challenge 1 : https://github.com/qlemoigne/larm_thibault_lemoigne/releases/tag/challenge-1
 - Challenge 2 : https://github.com/qlemoigne/larm_thibault_lemoigne/releases/tag/challenge-2
 
+## Video
+
+https://www.youtube.com/watch?v=wO5_Bc_lHiU&ab_channel=EmileThibault
+
 ## Presentation
 
 Ce projet est un système de navigation autonome pour un robot utilisant ROS2 (Robot Operating System). Il utilise les données de capteurs de profondeur et de caméra pour créer une carte de l'environnement et permettre au robot de se déplacer vers un point spécifié via RVIZ. Le package contient également des fonctionnalités de détection d'objets, telles que la détection de bouteilles oranges et noires, qui envoient des messages dans le topic /detection lorsqu'elles sont détectées. Les nodes clés de ce package incluent scan_echo, qui nettoie et transmet les données du laser, move, qui gère les commandes de mouvement et objects, qui effectue la détection des objets.
